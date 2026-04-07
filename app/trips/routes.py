@@ -723,3 +723,62 @@ def delete_saved_trip(saved_id):
         conn.close()
 
     return jsonify({"message": "deleted"}), 200
+
+
+@trips_bp.route("/bookings", methods=["GET"])
+def get_driver_bookings():
+    """
+    Return all pending/accepted reservation pickups across all of this
+    driver's active and scheduled trips. Used for the home screen bookings list.
+    """
+    driver_id, err = _require_driver()
+    if err:
+        return err
+
+    conn = database.get_db()
+    try:
+        rows = conn.execute(
+            """SELECT p.id, p.trip_id, p.stop_id, p.seats_requested, p.status,
+                      p.pickup_window_start, p.pickup_window_end,
+                      r.name as rider_name,
+                      t.route_id, t.scheduled_departure, t.status as trip_status
+               FROM PICKUP p
+               JOIN RIDER r ON r.id = p.rider_id
+               JOIN TRIP t ON t.id = p.trip_id
+               WHERE t.driver_id = ?
+                 AND p.pickup_type = 'reservation'
+                 AND p.status IN ('pending', 'accepted')
+                 AND t.status IN ('active', 'paused', 'scheduled')
+               ORDER BY t.scheduled_departure ASC, p.created_at ASC""",
+            (driver_id,)
+        ).fetchall()
+
+        bookings = []
+        for row in rows:
+            try:
+                route_name = gps.get_route(row["route_id"])["name"]
+            except KeyError:
+                route_name = row["route_id"]
+
+            stop_name = row["stop_id"]
+            for route in gps.ROUTES.values():
+                for stop in route["stops"]:
+                    if stop["id"] == row["stop_id"]:
+                        stop_name = stop["name"]
+                        break
+
+            bookings.append({
+                "pickup_id": row["id"],
+                "trip_id": row["trip_id"],
+                "rider_name": row["rider_name"],
+                "stop_name": stop_name,
+                "seats_requested": row["seats_requested"],
+                "status": row["status"],
+                "route_name": route_name,
+                "scheduled_departure": row["scheduled_departure"],
+                "trip_status": row["trip_status"],
+            })
+    finally:
+        conn.close()
+
+    return jsonify({"bookings": bookings}), 200

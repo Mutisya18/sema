@@ -131,7 +131,7 @@ def create_pickup():
         trip = conn.execute("SELECT * FROM TRIP WHERE id = ?", (trip_id,)).fetchone()
         if not trip:
             return jsonify({"error": "trip not found"}), 404
-        if trip["status"] != "active":
+        if trip["status"] not in ("active", "scheduled"):
             return jsonify({"error": "trip is not active"}), 409
 
         # Verify stop is active on this trip

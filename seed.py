@@ -24,11 +24,13 @@ SEED_DRIVERS = [
 
 def seed():
     """Insert seed data into the database if not already present."""
-    database.init_db()
-    connection = database.get_db()
+    # Always use a fresh direct connection — safe to call from any context
+    connection = database._open_connection()
+    database.init_db()  # ensure schema exists
     _seed_riders(connection)
     _seed_drivers(connection)
     connection.commit()
+    connection.close()
     logger.info({"event": "seed_completed", "message": "Seed data verified"})
     print("Seed complete.")
 

@@ -183,7 +183,8 @@ ON_ENTER['screen-home'] = () => {
     showScreen('screen-search');
   });
   document.getElementById('btn-schedule').addEventListener('click', () => {
-    showToast('Booking coming soon', 'default');
+    RiderState.journeyMode = 'pickup';
+    showScreen('screen-search');
   });
   wireBottomNav();
 };
@@ -1281,6 +1282,33 @@ ON_ENTER['screen-my-trips'] = async () => {
   }
 
   content.innerHTML = html;
+
+  // Tapping an active card re-enters the monitoring flow
+  content.querySelectorAll('[data-pickup-id]').forEach(card => {
+    card.addEventListener('click', async () => {
+      const pickupId = parseInt(card.dataset.pickupId);
+      const pickup = active.find(p => p.pickup_id === pickupId);
+      if (!pickup) return;
+
+      // Fetch full trip details
+      const tripRes = await apiGet(`/api/trips/${pickup.trip.id}`);
+      if (!tripRes.ok) { showToast('Could not load trip details', 'error'); return; }
+      const tripData = (await tripRes.json()).trip;
+
+      RiderState.selectedTripId = tripData.id;
+      RiderState.selectedTrip = tripData;
+      RiderState.activePickup = { ...pickup, id: pickup.pickup_id, stop_name: pickup.stop_name };
+      RiderState.journeyMode = pickup.pickup_type === 'reservation' ? 'pickup' : pickup.pickup_type;
+      RiderState.lastAlertLevel = null;
+
+      // Restore _fromStop from active stops
+      const fromStop = tripData.active_stops?.find(s => s.id === pickup.stop_name) ||
+                       tripData.active_stops?.[0];
+      if (fromStop) RiderState._fromStop = fromStop;
+
+      showScreen('screen-pickup-waiting');
+    });
+  });
 };
 
 ON_ENTER['screen-profile'] = () => {
@@ -1302,20 +1330,56 @@ ON_ENTER['screen-profile'] = () => {
 
 // ─── Bottom nav ───────────────────────────────────────────────────────────────
 
+// ─── SVG icons ────────────────────────────────────────────────────────────────
+
+const NAV_ICONS = {
+  home: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <path d="M3 10.5L11 3L19 10.5V19H14V14H8V19H3V10.5Z"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/>
+    <rect x="9" y="14" width="4" height="5" rx="0.5" fill="${active ? 'white' : 'none'}" stroke="${active ? color : 'none'}" stroke-width="0"/>
+  </svg>`,
+  trips: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <rect x="3" y="5" width="16" height="12" rx="2"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6"/>
+    <circle cx="6.5" cy="11" r="1.5" fill="${active ? 'white' : color}"/>
+    <line x1="9.5" y1="9" x2="16" y2="9" stroke="${active ? 'white' : color}" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="9.5" y1="13" x2="14" y2="13" stroke="${active ? 'white' : color}" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>`,
+  profile: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <circle cx="11" cy="8" r="3.5"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6"/>
+    <path d="M4 19c0-3.866 3.134-7 7-7h0c3.866 0 7 3.134 7 7"
+      stroke="${color}" stroke-width="1.6" stroke-linecap="round"
+      fill="${active ? color : 'none'}"/>
+  </svg>`,
+  history: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <circle cx="11" cy="11" r="8"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6"/>
+    <path d="M11 7V11L14 13" stroke="${active ? 'white' : color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+};
+
+// ─── Bottom nav ───────────────────────────────────────────────────────────────
+
 function buildBottomNav(activeTab) {
+  const color = '#1a5cff';
+  const inactive = '#bbb';
   const tabs = [
-    { id: 'home',    label: 'Home',    screen: 'screen-home' },
-    { id: 'trips',   label: 'Trips',   screen: 'screen-my-trips' },
-    { id: 'profile', label: 'Profile', screen: 'screen-profile' },
+    { id: 'home',    label: 'Home',    screen: 'screen-home',     icon: 'home' },
+    { id: 'trips',   label: 'Trips',   screen: 'screen-my-trips', icon: 'trips' },
+    { id: 'profile', label: 'Profile', screen: 'screen-profile',  icon: 'profile' },
   ];
   return `
     <nav class="bottom-nav">
-      ${tabs.map(t => `
-        <button class="nav-tab ${t.id === activeTab ? 'active' : ''}" data-screen="${t.screen}">
-          <div class="nav-tab-icon"><div class="dot"></div></div>
-          <span class="nav-tab-label">${t.label}</span>
-        </button>
-      `).join('')}
+      ${tabs.map(t => {
+        const isActive = t.id === activeTab;
+        return `
+          <button class="nav-tab ${isActive ? 'active' : ''}" data-screen="${t.screen}">
+            ${NAV_ICONS[t.icon](isActive, isActive ? color : inactive)}
+            <span class="nav-tab-label">${t.label}</span>
+          </button>
+        `;
+      }).join('')}
     </nav>
   `;
 }
@@ -1374,6 +1438,18 @@ async function init() {
       if (pd.pickup) {
         RiderState.activePickup = pd.pickup;
         RiderState.selectedTripId = pd.pickup.trip_id;
+
+        // Restore full trip and navigate to waiting screen
+        const tripRes = await apiGet(`/api/trips/${pd.pickup.trip_id}`);
+        if (tripRes.ok) {
+          RiderState.selectedTrip = (await tripRes.json()).trip;
+          // Restore from stop
+          const stop = RiderState.selectedTrip.active_stops?.find(s => s.id === pd.pickup.stop_id);
+          if (stop) RiderState._fromStop = { ...stop, route_id: RiderState.selectedTrip.route_id };
+          RiderState.journeyMode = pd.pickup.pickup_type === 'reservation' ? 'pickup' : pd.pickup.pickup_type;
+          showScreen('screen-pickup-waiting');
+          return;
+        }
       }
     }
     showScreen('screen-home');

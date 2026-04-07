@@ -1,37 +1,6 @@
 // driver.js — Driver frontend (Phase 1 + 2 + 3)
 'use strict';
 
-// ─── Auth Storage (localStorage) ──────────────────────────────────────────────
-// Each role maintains separate auth state in localStorage to prevent
-// session sharing between driver and rider tabs/windows.
-
-const AUTH_STORAGE_KEY = 'driver_auth';
-
-function saveAuthToStorage(user, sessionId) {
-  const authData = { user, sessionId, savedAt: Date.now() };
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
-  console.log('[AUTH] Saved auth to localStorage for driver');
-}
-
-function loadAuthFromStorage() {
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (stored) {
-      const authData = JSON.parse(stored);
-      console.log('[AUTH] Loaded auth from localStorage for driver');
-      return authData;
-    }
-  } catch (err) {
-    console.error('[AUTH] Failed to load auth from storage:', err);
-  }
-  return null;
-}
-
-function clearAuthFromStorage() {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-  console.log('[AUTH] Cleared auth from localStorage for driver');
-}
-
 // ─── State ───────────────────────────────────────────────────────────────────
 
 const DriverState = {
@@ -223,35 +192,17 @@ function buildLoginScreen() {
       console.log('[LOGIN] Response data:', data);
       
       if (res.ok) {
-        console.log('[LOGIN] Login successful, user:', data.user.name);
         DriverState.user = data.user;
-        console.log('[LOGIN] DriverState.user set to:', DriverState.user);
-        
-        // Save auth to localStorage to prevent session sharing with rider
-        saveAuthToStorage(data.user, data.session_id);
-        
-        console.log('[LOGIN] Initializing logger with session_id:', data.session_id?.substring(0, 8) + '...');
-        logger.init(data.session_id);
-        console.log('[LOGIN] Logger initialized');
-        
-        logger.log('login_success', 'success', { user_id: data.user.id, phone: data.user.phone });
-        console.log('[LOGIN] Logged login_success event');
-        
-        console.log('[LOGIN] Calling showScreen("screen-home")');
         showScreen('screen-home');
-        console.log('[LOGIN] showScreen completed');
       }
       else if (res.status === 404) {
-        console.log('[LOGIN] ERROR: User not found (404)');
         errorEl.textContent = 'Phone number not found';
       }
       else {
-        console.log('[LOGIN] ERROR: Unexpected status', res.status, data);
         errorEl.textContent = data.error || 'Something went wrong — try again';
       }
     } catch (err) {
-      console.error('[LOGIN] EXCEPTION:', err);
-      console.error('[LOGIN] Stack:', err.stack);
+      console.error('[login]', err);
       errorEl.textContent = 'Unable to reach the server — check your connection';
     }
   });
@@ -269,6 +220,30 @@ async function buildHomeScreen() {
     const res = await apiGet('/api/trips/scheduled');
     if (res.ok) scheduledTrips = (await res.json()).trips || [];
   } catch (e) { /* non-fatal */ }
+
+  // Fetch bookings
+  let bookings = [];
+  try {
+    const bRes = await apiGet('/api/trips/bookings');
+    if (bRes.ok) bookings = (await bRes.json()).bookings || [];
+  } catch (e) { /* non-fatal */ }
+
+  const bookingsSection = bookings.length
+    ? bookings.map(b => `
+        <div style="border:1.5px solid #c0d0ff;border-radius:12px;padding:12px;background:#f7f9ff;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <p style="font-size:14px;font-weight:700">${b.rider_name}</p>
+              <p style="font-size:12px;color:#888">${b.stop_name} · ${b.seats_requested} seat${b.seats_requested !== 1 ? 's' : ''}</p>
+              <p style="font-size:11px;color:#aaa">${b.route_name}${b.scheduled_departure ? ' · ' + new Date(b.scheduled_departure).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''}</p>
+            </div>
+            <span style="padding:3px 8px;border-radius:20px;background:${b.status === 'accepted' ? '#e6f6ee' : '#e8f0ff'};color:${b.status === 'accepted' ? '#0a7a3e' : '#1a5cff'};font-size:11px;font-weight:700">
+              ${b.status === 'accepted' ? 'Accepted' : 'Pending'}
+            </span>
+          </div>
+        </div>
+      `).join('')
+    : '<p style="font-size:13px;color:#888">No bookings yet</p>';
 
   const scheduledSection = scheduledTrips.length ? `
     <div>
@@ -299,7 +274,7 @@ async function buildHomeScreen() {
       <div class="avatar">${initials(user?.name || '')}</div>
     </div>
     <div class="home-content">
-      ${DriverState.activeTrip ? `
+      ${DriverState.activeTrip && DriverState.activeTrip.status !== 'scheduled' ? `
         <div style="padding:12px 16px;border-radius:10px;background:#e6f6ee;border:1px solid #90d4b0">
           <p style="font-size:13px;font-weight:700;color:#0d7a3e">You have an active trip</p>
           <p style="font-size:12px;color:#0d7a3e;opacity:.8;margin-top:2px">
@@ -311,7 +286,7 @@ async function buildHomeScreen() {
       ${scheduledSection}
       <div>
         <p style="font-size:14px;font-weight:700;margin-bottom:10px">Today's bookings</p>
-        <p style="font-size:13px;color:#888">No bookings for today</p>
+        <div id="bookings-section">${bookingsSection}</div>
       </div>
     </div>
     ${buildBottomNav('home')}
@@ -340,10 +315,54 @@ async function buildHomeScreen() {
   wireBottomNav();
 }
 
+// Home screen bookings poll — runs only while driver is on home screen
+let _homeBookingsPoll = null;
+
+function _startHomeBookingsPoll() {
+  _stopHomeBookingsPoll();
+  _homeBookingsPoll = setInterval(_refreshBookingsSection, 10000);
+}
+
+function _stopHomeBookingsPoll() {
+  if (_homeBookingsPoll) { clearInterval(_homeBookingsPoll); _homeBookingsPoll = null; }
+}
+
+async function _refreshBookingsSection() {
+  if (DriverState.currentScreen !== 'screen-home') { _stopHomeBookingsPoll(); return; }
+  try {
+    const res = await apiGet('/api/trips/bookings');
+    if (!res.ok) return;
+    const bookings = (await res.json()).bookings || [];
+    const el = document.getElementById('bookings-section');
+    if (!el) return;
+    el.innerHTML = bookings.length
+      ? bookings.map(b => `
+          <div style="border:1.5px solid #c0d0ff;border-radius:12px;padding:12px;background:#f7f9ff;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <p style="font-size:14px;font-weight:700">${b.rider_name}</p>
+                <p style="font-size:12px;color:#888">${b.stop_name} · ${b.seats_requested} seat${b.seats_requested !== 1 ? 's' : ''}</p>
+                <p style="font-size:11px;color:#aaa">${b.route_name}${b.scheduled_departure ? ' · ' + new Date(b.scheduled_departure).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''}</p>
+              </div>
+              <span style="padding:3px 8px;border-radius:20px;background:${b.status === 'accepted' ? '#e6f6ee' : '#e8f0ff'};color:${b.status === 'accepted' ? '#0a7a3e' : '#1a5cff'};font-size:11px;font-weight:700">
+                ${b.status === 'accepted' ? 'Accepted' : 'Pending'}
+              </span>
+            </div>
+          </div>
+        `).join('')
+      : '<p style="font-size:13px;color:#888">No bookings yet</p>';
+  } catch (e) { /* non-fatal */ }
+}
+
 ON_ENTER['screen-home'] = () => {
   if (!DriverState.user) { showScreen('screen-login'); return; }
   buildHomeScreen();
   _checkScheduledTripNotifications();
+  _startHomeBookingsPoll();
+};
+
+ON_EXIT['screen-home'] = () => {
+  _stopHomeBookingsPoll();
 };
 
 // ─── Screen: Start Trip Form ──────────────────────────────────────────────────
@@ -506,11 +525,12 @@ async function buildStartTripScreen(prefill = null) {
     const data = await res.json();
 
     if (res.status === 201) {
-      DriverState.activeTrip = data.trip;
       if (data.trip.status === 'scheduled') {
+        // Don't set activeTrip for scheduled — it's not running yet
         showToast(`Trip scheduled for ${new Date(scheduleTime).toLocaleTimeString()}`, 'success');
         showScreen('screen-home');
       } else {
+        DriverState.activeTrip = data.trip;
         showScreen('screen-active-trip');
       }
     } else if (res.status === 409) {
@@ -833,18 +853,33 @@ function _removeRiderCard(pickupId) {
 
 function _buildRiderCardHTML(rider) {
   const isSpotted = rider.spotted;
-  const border = isSpotted ? '1.5px solid #0d7a3e' : rider.pickup_type === 'reservation' ? '1.5px solid #a8c0ff' : '1.5px solid #f0f0f0';
-  const bg = isSpotted ? '#f0faf4' : rider.pickup_type === 'reservation' ? '#f7f9ff' : '#fff';
+  const isBooking = rider.pickup_type === 'reservation';
+  const isNear = rider.alert_level === 'near';
+  const border = isSpotted ? '1.5px solid #0d7a3e' : isBooking ? '1.5px solid #a8c0ff' : '1.5px solid #f0f0f0';
+  const bg = isSpotted ? '#f0faf4' : isBooking ? '#f7f9ff' : '#fff';
+
   const badge = isSpotted
     ? '<span style="padding:3px 8px;border-radius:20px;background:#e6f6ee;color:#0a7a3e;font-size:11px;font-weight:700">Spotted ✓</span>'
-    : rider.pickup_type === 'reservation'
+    : isBooking
       ? '<span style="padding:3px 8px;border-radius:20px;background:#e8f0ff;color:#1a5cff;font-size:11px;font-weight:700">Booking ★</span>'
       : rider.pickup_type === 'pickup'
         ? '<span style="padding:3px 8px;border-radius:20px;background:#f0f0ff;color:#5533ff;font-size:11px;font-weight:700">Pickup 📍</span>'
         : '<span style="padding:3px 8px;border-radius:20px;background:#fff3e0;color:#d06000;font-size:11px;font-weight:700">Flagging 🚩</span>';
 
+  // Booking card at alert_level=near: expand with countdown + confirm/no-show
+  const bookingExpanded = isBooking && isNear ? `
+    <div style="margin:8px 0;padding:8px 10px;background:#ffe8e8;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;color:#d00">Pickup window</span>
+      <span id="booking-countdown-${rider.pickup_id}" style="font-size:18px;font-weight:800;color:#d00">2:00</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn-board" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#e6f6ee;color:#0d7a3e;font-size:13px;font-weight:700;cursor:pointer">Confirm boarding</button>
+      <button class="btn-noshow" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#ffe8e8;color:#c00;font-size:13px;font-weight:700;cursor:pointer">No-show</button>
+    </div>
+  ` : '';
+
   const actionBtns = rider.status === 'accepted'
-    ? '<span style="font-size:12px;color:#0d7a3e;font-weight:600">Accepted ✓</span>'
+    ? (isBooking && isNear ? '' : '<span style="font-size:12px;color:#0d7a3e;font-weight:600">Accepted ✓</span>')
     : `<button class="btn-accept" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#e6f6ee;color:#0d7a3e;font-size:13px;font-weight:700;cursor:pointer">Accept</button>
        <button class="btn-reject" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#ffe8e8;color:#c00;font-size:13px;font-weight:700;cursor:pointer">Reject</button>`;
 
@@ -857,6 +892,7 @@ function _buildRiderCardHTML(rider) {
         </div>
         ${badge}
       </div>
+      ${bookingExpanded}
       <div style="display:flex;gap:8px">${actionBtns}</div>
     </div>
   `;
@@ -872,11 +908,30 @@ function _wireRiderCardButtons(card, rider) {
   });
   card.querySelector('.btn-reject')?.addEventListener('click', async () => {
     const res = await apiPatch(`/api/pickups/${rider.pickup_id}/reject`);
-    if (res.ok) {
-      const data = await res.json();
-      showToast(`${rider.rider_name} rejected`, 'default');
-    }
+    if (res.ok) showToast(`${rider.rider_name} rejected`, 'default');
   });
+  card.querySelector('.btn-board')?.addEventListener('click', async () => {
+    const res = await apiPatch(`/api/pickups/${rider.pickup_id}/board`);
+    if (res.ok) showToast('Boarding confirmed', 'success');
+    else showToast('Seat already taken', 'warning');
+  });
+  card.querySelector('.btn-noshow')?.addEventListener('click', async () => {
+    const res = await apiPatch(`/api/pickups/${rider.pickup_id}/noshow`);
+    if (res.ok) showToast('Seat freed', 'default');
+  });
+
+  // Start countdown for booking cards at near
+  const countdownEl = card.querySelector(`#booking-countdown-${rider.pickup_id}`);
+  if (countdownEl && !countdownEl.dataset.started) {
+    countdownEl.dataset.started = '1';
+    let secs = 120;
+    const t = setInterval(() => {
+      secs--;
+      if (!document.contains(countdownEl)) { clearInterval(t); return; }
+      if (secs <= 0) { clearInterval(t); countdownEl.textContent = 'Expired'; return; }
+      countdownEl.textContent = `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`;
+    }, 1000);
+  }
 }
 
 async function _pollGps(tripId) {
@@ -1193,24 +1248,60 @@ function _clearErrorBanner() {
 
 // ─── Bottom nav ───────────────────────────────────────────────────────────────
 
+// ─── SVG icons ────────────────────────────────────────────────────────────────
+
+const NAV_ICONS = {
+  home: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <path d="M3 10.5L11 3L19 10.5V19H14V14H8V19H3V10.5Z"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/>
+  </svg>`,
+  trips: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <rect x="3" y="5" width="16" height="12" rx="2"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6"/>
+    <circle cx="6.5" cy="11" r="1.5" fill="${active ? 'white' : color}"/>
+    <line x1="9.5" y1="9" x2="16" y2="9" stroke="${active ? 'white' : color}" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="9.5" y1="13" x2="14" y2="13" stroke="${active ? 'white' : color}" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>`,
+  profile: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <circle cx="11" cy="8" r="3.5"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6"/>
+    <path d="M4 19c0-3.866 3.134-7 7-7h0c3.866 0 7 3.134 7 7"
+      stroke="${color}" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>`,
+  history: (active, color) => `<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <circle cx="11" cy="11" r="8"
+      fill="${active ? color : 'none'}" stroke="${color}" stroke-width="1.6"/>
+    <path d="M11 7V11L14 13" stroke="${active ? 'white' : color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+};
+
+// ─── Bottom nav ───────────────────────────────────────────────────────────────
+
 function buildBottomNav(activeTab) {
+  const color = '#0d7a3e';
+  const inactive = '#bbb';
   const tabs = [
-    { id: 'home',    label: 'Home',      screen: 'screen-home' },
-    { id: 'trip',    label: 'Live Trip', screen: 'screen-active-trip' },
-    { id: 'history', label: 'History',   screen: 'screen-history' },
-    { id: 'profile', label: 'Profile',   screen: 'screen-profile' },
+    { id: 'home',    label: 'Home',      screen: 'screen-home',        icon: 'home' },
+    { id: 'trip',    label: 'Live Trip', screen: 'screen-active-trip', icon: 'trips' },
+    { id: 'history', label: 'History',   screen: 'screen-history',     icon: 'history' },
+    { id: 'profile', label: 'Profile',   screen: 'screen-profile',     icon: 'profile' },
   ];
   return `
     <nav class="bottom-nav">
-      ${tabs.map(t => `
-        <button class="nav-tab ${t.id === activeTab ? 'active' : ''}" data-screen="${t.screen}">
-          <div class="nav-tab-icon">
-            <div class="dot"></div>
-            ${t.id === 'trip' && DriverState.activeTrip ? '<span class="nav-badge"></span>' : ''}
-          </div>
-          <span class="nav-tab-label">${t.label}</span>
-        </button>
-      `).join('')}
+      ${tabs.map(t => {
+        const isActive = t.id === activeTab;
+        const badge = t.id === 'trip' && DriverState.activeTrip
+          ? '<span class="nav-badge"></span>' : '';
+        return `
+          <button class="nav-tab ${isActive ? 'active' : ''}" data-screen="${t.screen}" style="position:relative">
+            <div style="position:relative;display:inline-block">
+              ${NAV_ICONS[t.icon](isActive, isActive ? color : inactive)}
+              ${badge}
+            </div>
+            <span class="nav-tab-label">${t.label}</span>
+          </button>
+        `;
+      }).join('')}
     </nav>
   `;
 }
@@ -1224,15 +1315,12 @@ function wireBottomNav() {
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 async function signOut() {
-  logger.flushLogs();
   await apiPost('/api/auth/logout', {});
-  logger.destroy();
   stopAllPolls();
   cleanupMap();
   DriverState.user = null;
   DriverState.activeTrip = null;
   DriverState.riders = [];
-  clearAuthFromStorage();
   showScreen('screen-login');
 }
 
@@ -1245,173 +1333,49 @@ function stopAllPolls() {
 
 async function fetchRoutes() {
   try {
-    console.log('[ROUTES] Fetching routes from /api/config/routes...');
     const res = await apiGet('/api/config/routes');
-    console.log('[ROUTES] Response status:', res.status, 'ok:', res.ok);
-    
-    if (!res.ok) {
-      console.error('[ROUTES] Failed to fetch routes - status', res.status);
-      return;
-    }
-    
+    if (!res.ok) return;
     const data = await res.json();
-    console.log('[ROUTES] Fetched', data.routes?.length || 0, 'routes');
     ROUTES = data.routes || [];
-    console.log('[ROUTES] ROUTES array now has', ROUTES.length, 'items');
-    
-    if (ROUTES.length > 0) {
-      console.log('[ROUTES] First route:', ROUTES[0].name);
-    }
   } catch (err) {
-    console.error('[ROUTES] Exception while fetching routes:', err);
+    console.error('[fetchRoutes]', err);
   }
 }
 
 // ─── Page load ────────────────────────────────────────────────────────────────
 
 async function init() {
-  console.log('[INIT] Starting page initialization...');
-  
   buildLoginScreen();
-  console.log('[INIT] Login screen built');
+  ON_ENTER['screen-login'] = buildLoginScreen;
 
-  // Check localStorage first for cached auth state
-  const cachedAuth = loadAuthFromStorage();
-  if (cachedAuth && cachedAuth.user && cachedAuth.user.role === 'driver') {
-    console.log('[INIT] Found cached driver auth in localStorage');
-    
-    // Verify the server session is still valid before using cached auth
-    console.log('[INIT] Validating server session...');
-    const sessionValidRes = await apiGet('/api/auth/session');
-    
-    if (sessionValidRes.ok) {
-      const sessionData = await sessionValidRes.json();
-      
-      // Verify the session matches the cached user
-      if (sessionData.user?.role === 'driver' && sessionData.user?.id === cachedAuth.user.id) {
-        console.log('[INIT] Server session is valid and matches cached auth');
-        DriverState.user = cachedAuth.user;
-        
-        // Update sessionId from server response in case it changed
-        if (sessionData.session_id) {
-          saveAuthToStorage(cachedAuth.user, sessionData.session_id);
-        }
-        
-        // Restore logger and proceed with loading app
-        if (cachedAuth.sessionId) {
-          console.log('[INIT] Restoring logger with cached session_id:', cachedAuth.sessionId.substring(0, 8) + '...');
-          logger.init(cachedAuth.sessionId);
-          logger.log('page_loaded', 'success', { action: 'cached_session_restored' });
-          console.log('[INIT] Logger initialized with cached session');
-        }
-        
-        // Fetch routes in background
-        await fetchRoutes();
-        
-        // Fetch and restore active trip state
-        console.log('[INIT] Fetching active trips...');
-        const tripsRes = await apiGet('/api/trips?driver_active=1');
-        if (tripsRes.ok) {
-          const tripsData = await tripsRes.json();
-          const active = (tripsData.trips || []).find(t => t.status === 'active' || t.status === 'paused');
-          if (active) {
-            console.log('[INIT] Active trip found:', active.id, 'status:', active.status);
-            DriverState.activeTrip = active;
-            showScreen(active.status === 'paused' ? 'screen-paused-trip' : 'screen-active-trip');
-            startGpsPoll(active.id);
-            console.log('[INIT] Init complete - active trip screen shown');
-            return;
-          } else {
-            console.log('[INIT] No active trips found');
-          }
-        } else {
-          console.warn('[INIT] Could not fetch active trips:', tripsRes.status);
-        }
-        
-        console.log('[INIT] Showing home screen');
-        showScreen('screen-home');
-        console.log('[INIT] Init complete - home screen shown');
-        return;
-      } else {
-        console.log('[INIT] Session role mismatch or user mismatch, clearing cache');
-        clearAuthFromStorage();
-        showScreen('screen-login');
-        return;
-      }
-    } else {
-      console.log('[INIT] Server session invalid or expired (', sessionValidRes.status, '), clearing cache and showing login');
-      clearAuthFromStorage();
-      showScreen('screen-login');
-      return;
-    }
-  }
-
-  // No cached auth, check server session
-  console.log('[INIT] No cached driver auth, fetching session and routes in parallel...');
   const [sessionRes] = await Promise.all([apiGet('/api/auth/session'), fetchRoutes()]);
-  console.log('[INIT] Fetch completed, sessionRes.ok:', sessionRes.ok);
 
-  if (!sessionRes.ok) { 
-    console.log('[INIT] User not logged in (401), showing login screen');
-    showScreen('screen-login');
-    console.log('[INIT] Init complete - login screen shown');
-    return;
-  }
+  if (!sessionRes.ok) { showScreen('screen-login'); return; }
 
-  console.log('[INIT] User is logged in (session exists)');
   const data = await sessionRes.json();
-  console.log('[INIT] Session data:', { user_id: data.user?.id, name: data.user?.name, role: data.user?.role });
-  
-  // Verify the session is for driver role, not rider
-  if (data.user?.role !== 'driver') {
-    console.log('[INIT] Session role mismatch:', data.user?.role, '!== driver, clearing and showing login');
-    clearAuthFromStorage();
-    showScreen('screen-login');
-    return;
-  }
-  
   DriverState.user = data.user;
-  console.log('[INIT] DriverState.user set');
-  
-  // Save to localStorage for faster future loads
-  if (data.session_id) {
-    saveAuthToStorage(data.user, data.session_id);
-  }
 
-  // Restore logger with session ID from server
-  if (data.session_id) {
-    console.log('[INIT] Session ID found, initializing logger:', data.session_id.substring(0, 8) + '...');
-    logger.init(data.session_id);
-    logger.log('page_loaded', 'success', { action: 'session_restored' });
-    console.log('[INIT] Logger initialized and page_loaded logged');
-  } else {
-    console.warn('[INIT] WARNING: Session exists but no session_id returned');
-  }
-
-  // Restore active trip if one exists
-  console.log('[INIT] Fetching active trips...');
   const tripsRes = await apiGet('/api/trips?driver_active=1');
   if (tripsRes.ok) {
     const tripsData = await tripsRes.json();
     const active = (tripsData.trips || []).find(t => t.status === 'active' || t.status === 'paused');
     if (active) {
-      console.log('[INIT] Active trip found:', active.id, 'status:', active.status);
       DriverState.activeTrip = active;
       showScreen(active.status === 'paused' ? 'screen-paused-trip' : 'screen-active-trip');
       startGpsPoll(active.id);
       startRidersPoll(active.id);
-      console.log('[INIT] Init complete - active trip screen shown');
       return;
-    } else {
-      console.log('[INIT] No active trips found');
     }
-  } else {
-    console.warn('[INIT] Could not fetch active trips:', tripsRes.status);
   }
-  
-  console.log('[INIT] Showing home screen');
+
   showScreen('screen-home');
-  console.log('[INIT] Init complete - home screen shown');
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// Refresh bookings when driver switches back to this tab
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && DriverState.currentScreen === 'screen-home') {
+    _refreshBookingsSection();
+  }
+});

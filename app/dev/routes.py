@@ -30,15 +30,13 @@ def reset():
     stop_all_simulators()
 
     connection = database.get_db()
-    try:
-        connection.execute("DELETE FROM PICKUP")
-        connection.execute("DELETE FROM TRIP_STOPS")
-        connection.execute("DELETE FROM TRIP")
-        connection.execute("DELETE FROM DRIVER")
-        connection.execute("DELETE FROM RIDER")
-        connection.commit()
-    finally:
-        connection.close()
+    connection.execute("DELETE FROM PICKUP")
+    connection.execute("DELETE FROM TRIP_STOPS")
+    connection.execute("DELETE FROM TRIP")
+    connection.execute("DELETE FROM SAVED_TRIP")
+    connection.execute("DELETE FROM DRIVER")
+    connection.execute("DELETE FROM RIDER")
+    connection.commit()
 
     seed.seed()
 
