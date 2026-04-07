@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sema Driver</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f0f0ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:24px 16px}
+.outer{display:flex;gap:24px;align-items:flex-start;max-width:960px;width:100%}
+.phone{width:375px;min-width:375px;background:#fff;border-radius:36px;border:8px solid #1a1a1a;overflow:hidden;box-shadow:0 0 0 2px #333;position:relative}
+.phone-inner{height:720px;overflow:hidden;position:relative;background:#fff}
+.screen{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;background:#fff;overflow-y:auto}
+.screen.active{display:flex}
+.page-content{flex:1;overflow-y:auto;padding-bottom:90px}
+
+/* NAV */
+.bottom-nav{position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #eee;display:flex;z-index:100;padding:8px 0 12px}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0}
+.nav-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.nav-label{font-size:10px;color:#888}
+
+/* COMMON */
+.btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-primary{background:#0d7a3e;color:#fff}
+.btn-secondary{background:#f2f2f2;color:#333}
+.btn-outline{background:#fff;color:#0d7a3e;border:1.5px solid #0d7a3e}
+.btn-danger{background:#ff3b30;color:#fff}
+.btn-orange{background:#e07800;color:#fff}
+.input{width:100%;padding:12px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;outline:none;font-family:inherit}
+.input:focus{border-color:#0d7a3e}
+.label{font-size:12px;color:#888;margin-bottom:6px;display:block}
+.section-title{font-size:18px;font-weight:700;color:#111;margin-bottom:4px}
+.section-sub{font-size:13px;color:#888;margin-bottom:20px}
+.toast{position:absolute;bottom:90px;left:16px;right:16px;background:#111;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;text-align:center;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-blue{background:#e8f0ff;color:#1a5cff}
+.badge-green{background:#e6f6ee;color:#0a7a3e}
+.badge-orange{background:#fff3e0;color:#d06000}
+.badge-red{background:#ffe8e8;color:#d00}
+.badge-gray{background:#f2f2f2;color:#666}
+.chip{padding:6px 12px;border-radius:20px;border:1.5px solid #e0e0e0;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip.active{border-color:#0d7a3e;color:#0d7a3e;background:#f0faf4}
+.divider{height:1px;background:#f0f0f0;margin:12px 0}
+.alert-banner{padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;margin:0 16px 12px}
+.alert-orange{background:#fff3e0;color:#d06000;border:1px solid #ffd080}
+.alert-blue{background:#e8f0ff;color:#1a5cff;border:1px solid #a8c0ff}
+.alert-green{background:#e6f6ee;color:#0a7a3e;border:1px solid #90d4b0}
+.alert-red{background:#ffe8e8;color:#c00;border:1px solid #ffb0b0}
+.app-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.back-btn{width:32px;height:32px;border-radius:50%;background:#f2f2f2;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:16px}
+.map-placeholder{background:#dde8d4;position:relative;overflow:hidden;flex-shrink:0}
+.map-road-h{position:absolute;height:3px;left:0;right:0;background:#fff;opacity:.55}
+.map-road-v{position:absolute;width:3px;top:0;bottom:0;background:#fff;opacity:.55}
+.map-dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2.5px solid #fff}
+.map-dot-blue{background:#1a5cff}
+.map-dot-orange{background:#ff8c00}
+.map-dot-green{background:#0d7a3e}
+.map-dot-red{background:#ff3b30}
+.map-label{position:absolute;background:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#111;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* RIDER DOT ON MAP */
+.rider-dot{position:absolute;cursor:pointer}
+.rider-dot-circle{width:14px;height:14px;border-radius:50%;border:2.5px solid #fff;transition:transform .15s}
+.rider-dot:hover .rider-dot-circle{transform:scale(1.4)}
+.rider-popup{position:absolute;bottom:20px;left:-60px;width:130px;background:#fff;border-radius:8px;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.18);display:none;z-index:50}
+.rider-dot.open .rider-popup{display:block}
+.rider-popup-name{font-size:11px;font-weight:700;color:#111;margin-bottom:2px}
+.rider-popup-dest{font-size:10px;color:#888;margin-bottom:6px}
+.rider-popup-btns{display:flex;gap:4px}
+.rpb{flex:1;padding:4px 0;border-radius:6px;border:none;font-size:10px;font-weight:700;cursor:pointer}
+.rpb-accept{background:#e6f6ee;color:#0a7a3e}
+.rpb-reject{background:#ffe8e8;color:#c00}
+
+/* RIDER LIST CARD */
+.rider-card{padding:14px;border:1.5px solid #f0f0f0;border-radius:12px;margin-bottom:8px}
+.rider-card.reserved{border-color:#a8c0ff;background:#f7f9ff}
+.rider-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.rider-name{font-size:14px;font-weight:700;color:#111}
+.rider-dest{font-size:12px;color:#888;margin-top:1px}
+.rider-actions{display:flex;gap:8px}
+.btn-accept{padding:8px 14px;border-radius:8px;border:none;background:#e6f6ee;color:#0a7a3e;font-size:13px;font-weight:700;cursor:pointer}
+.btn-reject{padding:8px 14px;border-radius:8px;border:none;background:#ffe8e8;color:#c00;font-size:13px;font-weight:700;cursor:pointer}
+
+/* SEAT COUNTER */
+.seat-counter{display:flex;align-items:center;gap:12px}
+.seat-num{font-size:36px;font-weight:800;color:#0d7a3e;line-height:1}
+
+/* STAT CARD */
+.stat-card{background:#f8f8f8;border-radius:12px;padding:12px;text-align:center}
+.stat-val{font-size:22px;font-weight:800;color:#111}
+.stat-lbl{font-size:11px;color:#888;margin-top:2px}
+
+/* CLUSTER BADGE */
+.cluster{position:absolute;cursor:pointer}
+.cluster-circle{width:32px;height:32px;border-radius:50%;background:#ff8c00;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff}
+.cluster-reserved{background:#1a5cff}
+
+/* PROGRESS */
+.progress-bar{height:4px;background:#f0f0f0;border-radius:2px;margin:0 0 16px}
+.progress-fill{height:100%;background:#0d7a3e;border-radius:2px;transition:width .4s}
+.step-dot{width:6px;height:6px;border-radius:50%;background:#e0e0e0}
+.step-dot.active{background:#0d7a3e;width:18px;border-radius:3px}
+
+/* NOTIFICATION */
+.notif{padding:12px 14px;border-radius:10px;background:#f8f8f8;border:1px solid #e8e8e8;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+
+/* PANEL */
+.journey-panel{flex:1;background:#fff;border-radius:16px;border:1px solid #e8e8e8;padding:20px;min-width:220px;max-width:260px}
+.journey-panel h3{font-size:14px;font-weight:700;color:#111;margin-bottom:4px}
+.journey-panel p{font-size:12px;color:#888;margin-bottom:16px}
+.journey-list{display:flex;flex-direction:column;gap:4px}
+.journey-btn{width:100%;text-align:left;padding:9px 12px;border-radius:8px;border:none;background:transparent;font-size:13px;color:#444;cursor:pointer;transition:background .15s}
+.journey-btn:hover{background:#f5f5f5}
+.journey-btn.active{background:#f0faf4;color:#0d7a3e;font-weight:600}
+.journey-group{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 4px 4px}
+
+/* TOGGLE */
+.toggle{width:48px;height:26px;border-radius:13px;background:#e0e0e0;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.toggle.on{background:#0d7a3e}
+.toggle-thumb{width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on .toggle-thumb{left:25px}
+</style>
+</head>
+<body>
+<div class="outer">
+  <div class="phone">
+    <div class="phone-inner" id="phoneInner">
+
+      <!-- ===== SPLASH ===== -->
+      <div class="screen active" id="d-splash" style="justify-content:center;align-items:center;background:#0d7a3e;padding:40px">
+        <div style="text-align:center">
+          <div style="width:72px;height:72px;background:#fff;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+              <rect x="4" y="14" width="36" height="18" rx="4" fill="#0d7a3e"/>
+              <rect x="8" y="18" width="12" height="8" rx="2" fill="#fff" opacity=".8"/>
+              <rect x="24" y="18" width="12" height="8" rx="2" fill="#fff" opacity=".8"/>
+              <circle cx="11" cy="33" r="4" fill="#0d7a3e" stroke="#fff" stroke-width="2"/>
+              <circle cx="33" cy="33" r="4" fill="#0d7a3e" stroke="#fff" stroke-width="2"/>
+            </svg>
+          </div>
+          <div style="font-size:32px;font-weight:800;color:#fff;letter-spacing:-1px">Sema</div>
+          <div style="font-size:14px;color:rgba(255,255,255,.7);margin-top:4px;margin-bottom:6px">Driver portal</div>
+          <div style="display:inline-block;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 12px;margin-bottom:40px">
+            <span style="font-size:12px;color:rgba(255,255,255,.8)">For matatu operators</span>
+          </div>
+          <button class="btn" style="background:#fff;color:#0d7a3e;margin-bottom:12px" onclick="go('d-register')">Register as driver</button>
+          <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3)" onclick="go('d-login')">Sign in</button>
+        </div>
+      </div>
+
+      <!-- ===== REGISTER ===== -->
+      <div class="screen" id="d-register">
+        <div class="page-content" style="padding:20px">
+          <button class="back-btn" onclick="go('d-splash')" style="margin-bottom:20px">←</button>
+          <div style="display:flex;gap:4px;margin-bottom:16px">
+            <div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:33%"></div></div>
+          <div class="section-title">Driver registration</div>
+          <div class="section-sub">Your details are reviewed before approval</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div><label class="label">Full name</label><input class="input" value="James Mwangi"></div>
+            <div><label class="label">Phone number</label><input class="input" value="+254 722 100 200"></div>
+            <div><label class="label">Driver's licence number</label><input class="input" value="DL-2019-087432"></div>
+            <div><label class="label">Matatu plate number</label><input class="input" value="KJA 001A"></div>
+            <div><label class="label">Sacco affiliation</label>
+              <select class="input">
+                <option>Super Metro</option>
+                <option>OMA Sacco</option>
+                <option>City Shuttle</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="go('d-pending')">Submit application →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PENDING APPROVAL ===== -->
+      <div class="screen" id="d-pending" style="justify-content:center;align-items:center;padding:32px">
+        <div style="text-align:center">
+          <div style="width:80px;height:80px;background:#fff8e6;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px">⏳</div>
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:8px">Application submitted</div>
+          <div style="font-size:14px;color:#888;margin-bottom:28px;line-height:1.6">Your application is under review by the Sema admin team. You'll receive a notification once approved — usually within 24 hours.</div>
+          <div style="background:#f8f8f8;border-radius:14px;padding:16px;text-align:left;margin-bottom:24px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;color:#888">Name</span><span style="font-size:13px;font-weight:600;color:#111">James Mwangi</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;color:#888">Plate</span><span style="font-size:13px;font-weight:600;color:#111">KJA 001A</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:#888">Sacco</span><span style="font-size:13px;font-weight:600;color:#111">Super Metro</span></div>
+          </div>
+          <button class="btn btn-primary" onclick="go('d-approved')">Simulate approval ↓</button>
+        </div>
+      </div>
+
+      <!-- ===== APPROVED NOTIFICATION ===== -->
+      <div class="screen" id="d-approved" style="justify-content:center;align-items:center;padding:32px">
+        <div style="text-align:center">
+          <div style="width:80px;height:80px;background:#e6f6ee;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px">✓</div>
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:8px">You're approved!</div>
+          <div style="font-size:14px;color:#888;margin-bottom:28px">Welcome to Sema, James. Your driver account is now active.</div>
+          <button class="btn btn-primary" onclick="go('d-home')">Go to driver dashboard →</button>
+        </div>
+      </div>
+
+      <!-- ===== LOGIN ===== -->
+      <div class="screen" id="d-login" style="padding:24px">
+        <button class="back-btn" onclick="go('d-splash')" style="margin-bottom:24px">←</button>
+        <div class="section-title">Welcome back</div>
+        <div class="section-sub">Sign in to your driver account</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div><label class="label">Phone number</label><input class="input" value="+254 722 100 200"></div>
+          <div><label class="label">Password</label><input class="input" type="password" value="password123"></div>
+          <button class="btn btn-primary" onclick="go('d-home')">Sign in →</button>
+        </div>
+      </div>
+
+      <!-- ===== HOME DASHBOARD (inactive) ===== -->
+      <div class="screen" id="d-home">
+        <div style="padding:16px 20px 12px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:13px;color:#888">Good morning,</div>
+            <div style="font-size:20px;font-weight:700;color:#111">James 👋</div>
+          </div>
+          <div style="width:40px;height:40px;border-radius:50%;background:#e6f6ee;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0d7a3e;font-size:14px">JM</div>
+        </div>
+        <div class="page-content" style="padding:0 20px">
+          <!-- Status card -->
+          <div style="background:#f8f8f8;border-radius:16px;padding:16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:12px;color:#888;margin-bottom:2px">Status</div>
+              <div style="font-size:16px;font-weight:700;color:#111">Offline</div>
+              <div style="font-size:12px;color:#888;margin-top:2px">KJA 001A · Super Metro</div>
+            </div>
+            <div style="text-align:right">
+              <div style="width:48px;height:48px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:4px">🚍</div>
+            </div>
+          </div>
+          <!-- Big start button -->
+          <button class="btn btn-primary" style="font-size:17px;padding:18px;margin-bottom:16px" onclick="go('d-start-trip')">Start a trip</button>
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div class="stat-card"><div class="stat-val">12</div><div class="stat-lbl">Trips today</div></div>
+            <div class="stat-card"><div class="stat-val">KSh 960</div><div class="stat-lbl">Fares today</div></div>
+            <div class="stat-card"><div class="stat-val">48</div><div class="stat-lbl">This week</div></div>
+            <div class="stat-card"><div class="stat-val">4.7 ★</div><div class="stat-lbl">Rating</div></div>
+          </div>
+          <!-- Reservations for today -->
+          <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:10px">Upcoming reservations</div>
+          <div style="border:1.5px solid #dce6ff;background:#f7f9ff;border-radius:12px;padding:12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div><div style="font-size:14px;font-weight:700;color:#111">Amina Wanjiru</div><div style="font-size:12px;color:#888">Githurai Stage · 7:28–7:38 AM</div></div>
+              <span class="badge badge-blue">2 seats</span>
+            </div>
+            <div style="font-size:12px;color:#888">CBD → Thika Town · #SMA-4721</div>
+          </div>
+          <div style="border:1.5px solid #dce6ff;background:#f7f9ff;border-radius:12px;padding:12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div><div style="font-size:14px;font-weight:700;color:#111">Peter Kamau</div><div style="font-size:12px;color:#888">Muthaiga Stage · 7:15–7:25 AM</div></div>
+              <span class="badge badge-blue">1 seat</span>
+            </div>
+            <div style="font-size:12px;color:#888">CBD → Githurai · #SMA-4698</div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active" onclick="go('d-home')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#0d7a3e"/></svg></div><span class="nav-label" style="color:#0d7a3e">Home</span></div>
+          <div class="nav-item" onclick="go('d-active-trip')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><circle cx="11" cy="12" r="3" stroke="#bbb" stroke-width="2"/></svg></div><span class="nav-label">Live trip</span></div>
+          <div class="nav-item" onclick="go('d-trip-history')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">History</span></div>
+          <div class="nav-item" onclick="go('d-profile')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#bbb" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Profile</span></div>
+        </div>
+      </div>
+
+      <!-- ===== START TRIP FORM ===== -->
+      <div class="screen" id="d-start-trip">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('d-home')">←</button>
+          <span style="font-size:16px;font-weight:700">Set up trip</span>
+          <div></div>
+        </div>
+        <div class="page-content" style="padding:16px">
+          <div style="margin-bottom:14px"><label class="label">Final destination</label><input class="input" value="Thika Town"></div>
+          <div style="margin-bottom:14px">
+            <label class="label">Pit stops / stages (optional)</label>
+            <div style="display:flex;flex-direction:column;gap:8px" id="pitstops">
+              <div style="display:flex;gap:8px"><input class="input" style="flex:1" value="Muthaiga Stage"><button style="padding:8px 12px;border-radius:8px;border:1px solid #e0e0e0;background:#f8f8f8;cursor:pointer;font-size:13px">✕</button></div>
+              <div style="display:flex;gap:8px"><input class="input" style="flex:1" value="Githurai Stage"><button style="padding:8px 12px;border-radius:8px;border:1px solid #e0e0e0;background:#f8f8f8;cursor:pointer;font-size:13px">✕</button></div>
+              <div style="display:flex;gap:8px"><input class="input" style="flex:1" value="Ruiru Stage"><button style="padding:8px 12px;border-radius:8px;border:1px solid #e0e0e0;background:#f8f8f8;cursor:pointer;font-size:13px">✕</button></div>
+            </div>
+            <div style="margin-top:8px"><button style="font-size:13px;color:#0d7a3e;border:none;background:none;cursor:pointer;padding:4px 0;font-weight:600">+ Add stop</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div>
+              <label class="label">Available seats</label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <button style="width:36px;height:36px;border-radius:8px;border:1.5px solid #e0e0e0;background:#f8f8f8;font-size:18px;cursor:pointer;font-weight:700" onclick="adjCapacity(-1)">−</button>
+                <span style="font-size:20px;font-weight:800;color:#111;min-width:24px;text-align:center" id="capacity-num">14</span>
+                <button style="width:36px;height:36px;border-radius:8px;border:1.5px solid #e0e0e0;background:#f8f8f8;font-size:18px;cursor:pointer;font-weight:700" onclick="adjCapacity(1)">+</button>
+              </div>
+            </div>
+            <div>
+              <label class="label">Fare (KSh)</label>
+              <input class="input" value="80" style="text-align:center;font-size:18px;font-weight:700">
+            </div>
+          </div>
+          <div style="background:#f0faf4;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid #c0e8d0">
+            <div style="font-size:13px;font-weight:700;color:#0d7a3e;margin-bottom:4px">3 reserved seats for this trip</div>
+            <div style="font-size:12px;color:#666">Amina Wanjiru · Githurai Stage · 7:28 AM</div>
+            <div style="font-size:12px;color:#666">Peter Kamau · Muthaiga Stage · 7:15 AM</div>
+          </div>
+          <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="go('d-active-trip')">Begin trip 🚍</button>
+        </div>
+      </div>
+
+      <!-- ===== ACTIVE TRIP (main driver view) ===== -->
+      <div class="screen" id="d-active-trip">
+        <!-- Header -->
+        <div style="padding:10px 16px 6px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+          <div>
+            <div style="font-size:12px;color:#888">CBD → Thika Town</div>
+            <div style="font-size:16px;font-weight:700;color:#111">Active trip</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="text-align:right">
+              <div style="font-size:10px;color:#888">Seats left</div>
+              <div style="font-size:24px;font-weight:800;color:#0d7a3e" id="live-seats">11</div>
+            </div>
+            <div class="toggle on" id="avail-toggle" onclick="toggleAvail()" style="margin-left:4px"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <!-- Map -->
+        <div class="map-placeholder" style="height:300px">
+          <div class="map-road-h" style="top:45%"></div>
+          <div class="map-road-h" style="top:72%"></div>
+          <div class="map-road-v" style="left:32%"></div>
+          <div class="map-road-v" style="left:62%"></div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 300">
+            <path d="M30 270 Q110 200 200 140 Q270 95 340 50" stroke="#0d7a3e" stroke-width="3" fill="none"/>
+          </svg>
+          <!-- Driver dot -->
+          <div style="position:absolute;top:46%;left:44%;width:20px;height:20px;background:#0d7a3e;border-radius:50%;border:3px solid #fff;z-index:10"></div>
+          <div class="map-label" style="top:34%;left:47%;background:#0d7a3e;color:#fff">You</div>
+          <!-- Orange flagging riders -->
+          <div class="rider-dot" id="rd1" style="top:22%;left:18%" onclick="toggleDot('rd1')">
+            <div class="rider-dot-circle map-dot-orange"></div>
+            <div class="rider-popup">
+              <div class="rider-popup-name">Brian Otieno</div>
+              <div class="rider-popup-dest">→ Githurai</div>
+              <div class="rider-popup-btns">
+                <button class="rpb rpb-accept" onclick="acceptRider('rd1',event)">Accept</button>
+                <button class="rpb rpb-reject" onclick="rejectRider('rd1',event)">Reject</button>
+              </div>
+            </div>
+          </div>
+          <div class="map-label" style="top:13%;left:16%;font-size:9px">Brian</div>
+          <!-- Reserved riders (blue) -->
+          <div class="rider-dot" id="rd2" style="top:60%;left:28%" onclick="toggleDot('rd2')">
+            <div class="rider-dot-circle map-dot-blue"></div>
+            <div class="rider-popup">
+              <div class="rider-popup-name">Peter Kamau</div>
+              <div class="rider-popup-dest">→ Githurai · Reserved</div>
+              <div class="rider-popup-btns">
+                <button class="rpb rpb-accept" onclick="acceptRider('rd2',event)">Accept</button>
+                <button class="rpb rpb-reject" onclick="rejectRider('rd2',event)">Reject</button>
+              </div>
+            </div>
+          </div>
+          <div class="map-label" style="top:52%;left:26%;font-size:9px;background:#e8f0ff;color:#1a5cff">Peter ★</div>
+          <!-- Cluster -->
+          <div class="cluster" style="top:16%;left:58%" onclick="go('d-cluster-view')">
+            <div class="cluster-circle">3</div>
+            <div class="map-label" style="top:36px;left:-20px;font-size:9px">Point D</div>
+          </div>
+          <!-- Reserved cluster -->
+          <div class="cluster" style="top:70%;left:62%" onclick="go('d-pickup-confirm')">
+            <div class="cluster-circle cluster-reserved">2</div>
+            <div class="map-label" style="top:36px;left:-30px;font-size:9px;background:#e8f0ff;color:#1a5cff">Amina ★×2</div>
+          </div>
+          <!-- Legend -->
+          <div style="position:absolute;bottom:8px;left:8px;background:rgba(255,255,255,.92);border-radius:8px;padding:6px 8px;display:flex;gap:10px">
+            <div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:#ff8c00"></div><span style="font-size:9px;color:#555">Flagging</span></div>
+            <div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:#1a5cff"></div><span style="font-size:9px;color:#555">Reserved</span></div>
+            <div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:#0d7a3e"></div><span style="font-size:9px;color:#555">You</span></div>
+          </div>
+        </div>
+        <!-- Alerts -->
+        <div style="flex:1;overflow-y:auto;padding:10px 16px 90px">
+          <div class="alert-banner alert-blue" style="margin:0 0 10px">
+            <div style="font-size:13px;font-weight:700">🔵 Reserved pickup in 0.8 km</div>
+            <div style="font-size:12px;margin-top:2px">Amina Wanjiru · Githurai Stage · 7:28–7:38 AM</div>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#111;margin-bottom:8px">Incoming requests</div>
+          <!-- Flagging rider card -->
+          <div class="rider-card">
+            <div class="rider-card-header">
+              <div>
+                <div class="rider-name">Brian Otieno</div>
+                <div class="rider-dest">→ Githurai · 0.4 km away</div>
+              </div>
+              <span class="badge badge-orange">Flagging</span>
+            </div>
+            <div class="rider-actions">
+              <button class="btn-accept" onclick="acceptCard(this)">Accept</button>
+              <button class="btn-reject" onclick="rejectCard(this)">Reject</button>
+            </div>
+          </div>
+          <!-- Reserved rider card -->
+          <div class="rider-card reserved">
+            <div class="rider-card-header">
+              <div>
+                <div class="rider-name">Peter Kamau</div>
+                <div class="rider-dest">→ Githurai · Muthaiga Stage</div>
+              </div>
+              <span class="badge badge-blue">Reserved ★</span>
+            </div>
+            <div style="font-size:12px;color:#888;margin-bottom:8px">Pickup window: 7:15–7:25 AM · 1 seat</div>
+            <div class="rider-actions">
+              <button class="btn-accept" onclick="acceptCard(this)">Confirm</button>
+              <button class="btn-reject" onclick="rejectCard(this)">Reject ride</button>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom bar -->
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="go('d-home')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#bbb"/></svg></div><span class="nav-label">Home</span></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#0d7a3e" stroke-width="2"/><circle cx="11" cy="12" r="3" stroke="#0d7a3e" stroke-width="2"/></svg></div><span class="nav-label" style="color:#0d7a3e">Live trip</span></div>
+          <div class="nav-item" onclick="go('d-trip-history')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">History</span></div>
+          <div class="nav-item" onclick="go('d-profile')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#bbb" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Profile</span></div>
+        </div>
+      </div>
+
+      <!-- ===== PAUSED TRIP ===== -->
+      <div class="screen" id="d-paused">
+        <div style="padding:10px 16px 6px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+          <div><div style="font-size:12px;color:#888">CBD → Thika Town</div><div style="font-size:16px;font-weight:700;color:#111">Trip paused</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="text-align:right"><div style="font-size:10px;color:#888">Seats left</div><div style="font-size:24px;font-weight:800;color:#888">11</div></div>
+            <div class="toggle" id="pause-toggle" onclick="go('d-active-trip')"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <div class="map-placeholder" style="height:260px;position:relative">
+          <div class="map-road-h" style="top:50%"></div>
+          <div class="map-road-v" style="left:50%"></div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 260">
+            <path d="M30 230 Q120 170 210 115 Q275 78 340 45" stroke="#aaa" stroke-width="3" fill="none" stroke-dasharray="6,4"/>
+          </svg>
+          <div style="position:absolute;top:48%;left:46%;width:20px;height:20px;background:#888;border-radius:50%;border:3px solid #fff;z-index:10"></div>
+        </div>
+        <div style="padding:16px">
+          <div class="alert-banner alert-orange" style="margin:0 0 16px">
+            <div style="font-size:14px;font-weight:700">⏸ You are paused</div>
+            <div style="font-size:12px;margin-top:2px">You're hidden from rider searches. Toggle above to resume.</div>
+          </div>
+          <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('d-active-trip')">Resume availability</button>
+          <button class="btn btn-danger" onclick="go('d-end-trip')">End this trip</button>
+        </div>
+      </div>
+
+      <!-- ===== CLUSTER VIEW (multi-rider at location) ===== -->
+      <div class="screen" id="d-cluster-view">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('d-active-trip')">←</button>
+          <span style="font-size:16px;font-weight:700">3 riders at Point D</span>
+          <div></div>
+        </div>
+        <div class="map-placeholder" style="height:160px">
+          <div class="map-road-h" style="top:50%"></div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 160">
+            <path d="M30 140 Q150 80 300 30" stroke="#0d7a3e" stroke-width="3" fill="none"/>
+          </svg>
+          <div class="cluster" style="top:30%;left:50%">
+            <div class="cluster-circle">3</div>
+          </div>
+          <div style="position:absolute;top:60%;left:20%;width:18px;height:18px;background:#0d7a3e;border-radius:50%;border:3px solid #fff"></div>
+          <div class="map-label" style="top:72%;left:22%;background:#0d7a3e;color:#fff">You (1.2km)</div>
+        </div>
+        <div class="page-content" style="padding:14px 16px 0">
+          <div style="font-size:13px;color:#888;margin-bottom:10px">All flagging riders · Point D stage</div>
+          <div class="rider-card">
+            <div class="rider-card-header">
+              <div><div class="rider-name">Susan Njoki</div><div class="rider-dest">→ Ruiru · 0 km</div></div>
+              <span class="badge badge-orange">Flagging</span>
+            </div>
+            <div class="rider-actions">
+              <button class="btn-accept" onclick="acceptCard(this)">Accept</button>
+              <button class="btn-reject" onclick="rejectCard(this)">Reject</button>
+            </div>
+          </div>
+          <div class="rider-card">
+            <div class="rider-card-header">
+              <div><div class="rider-name">Kevin Ochieng</div><div class="rider-dest">→ Thika · 0 km</div></div>
+              <span class="badge badge-orange">Flagging</span>
+            </div>
+            <div class="rider-actions">
+              <button class="btn-accept" onclick="acceptCard(this)">Accept</button>
+              <button class="btn-reject" onclick="rejectCard(this)">Reject</button>
+            </div>
+          </div>
+          <div class="rider-card">
+            <div class="rider-card-header">
+              <div><div class="rider-name">Grace Wambui</div><div class="rider-dest">→ Githurai · 0 km</div></div>
+              <span class="badge badge-orange">Flagging</span>
+            </div>
+            <div class="rider-actions">
+              <button class="btn-accept" onclick="acceptCard(this)">Accept</button>
+              <button class="btn-reject" onclick="rejectCard(this)">Reject</button>
+            </div>
+          </div>
+          <button class="btn btn-outline" style="margin-top:8px" onclick="go('d-active-trip')">Navigate to Point D</button>
+        </div>
+      </div>
+
+      <!-- ===== PICKUP CONFIRM (arriving at reserved spot) ===== -->
+      <div class="screen" id="d-pickup-confirm">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('d-active-trip')">←</button>
+          <span style="font-size:16px;font-weight:700">Confirm pickups</span>
+          <span class="badge badge-green pulse">● Here</span>
+        </div>
+        <div class="alert-banner alert-green" style="margin-top:8px">
+          <div style="font-size:13px;font-weight:700">📍 You've arrived at Githurai Stage</div>
+          <div style="font-size:12px;margin-top:2px">Confirm each rider as they board</div>
+        </div>
+        <div class="page-content" style="padding:0 16px">
+          <div style="font-size:13px;color:#888;margin:8px 0 10px">Reserved riders at this stop (2)</div>
+          <!-- Rider 1 - ready -->
+          <div class="rider-card reserved" id="pickup-amina">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div><div class="rider-name">Amina Wanjiru</div><div class="rider-dest">→ Thika Town · Seats 2A, 3A</div></div>
+              <span class="badge badge-green">Ready ✓</span>
+            </div>
+            <div style="font-size:12px;color:#888;margin-bottom:10px">Rider confirmed at spot · 2 seats</div>
+            <button class="btn btn-primary" style="padding:10px" onclick="confirmPickup('pickup-amina','Amina')">Confirm boarding</button>
+          </div>
+          <!-- Rider 2 - waiting -->
+          <div class="rider-card reserved" id="pickup-peter">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div><div class="rider-name">Peter Kamau</div><div class="rider-dest">→ Githurai · Seat 1C</div></div>
+              <span class="badge badge-orange">Waiting</span>
+            </div>
+            <div style="font-size:12px;color:#888;margin-bottom:10px">Rider has not confirmed yet · 1 seat</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-accept" style="flex:1;padding:10px;border-radius:8px" onclick="confirmPickup('pickup-peter','Peter')">Confirm boarding</button>
+              <button class="btn-reject" style="padding:10px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700" onclick="rejectPickup('pickup-peter')">No-show</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== REJECT RIDER FLOW ===== -->
+      <div class="screen" id="d-reject-view" style="padding:24px;justify-content:center">
+        <div style="text-align:center;padding:16px 0 20px">
+          <div style="width:72px;height:72px;background:#ffe8e8;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px">✕</div>
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:6px">Reject this rider?</div>
+          <div style="font-size:14px;color:#888;margin-bottom:24px">Brian Otieno will be notified and shown alternative matatus.</div>
+        </div>
+        <div style="background:#f8f8f8;border-radius:12px;padding:14px;margin-bottom:20px">
+          <div style="font-size:13px;color:#888;margin-bottom:8px">Reason (optional)</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="chip" onclick="selectReason(this)">Matatu full</div>
+            <div class="chip active" onclick="selectReason(this)">Not on my route</div>
+            <div class="chip" onclick="selectReason(this)">Other</div>
+          </div>
+        </div>
+        <button class="btn btn-danger" style="margin-bottom:10px" onclick="go('d-active-trip');showToast('Rider rejected. They have been notified.')">Confirm rejection</button>
+        <button class="btn btn-secondary" onclick="go('d-active-trip')">Cancel</button>
+      </div>
+
+      <!-- ===== END TRIP ===== -->
+      <div class="screen" id="d-end-trip" style="padding:24px;justify-content:center">
+        <div style="text-align:center;padding:16px 0 20px">
+          <div style="width:72px;height:72px;background:#e6f6ee;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px">🏁</div>
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:6px">Trip complete!</div>
+          <div style="font-size:14px;color:#888;margin-bottom:24px">CBD → Thika Town · 7:06 – 8:01 AM</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+          <div class="stat-card"><div class="stat-val">14</div><div class="stat-lbl">Total pickups</div></div>
+          <div class="stat-card"><div class="stat-val">55 min</div><div class="stat-lbl">Duration</div></div>
+          <div class="stat-card"><div class="stat-val">34 km</div><div class="stat-lbl">Route covered</div></div>
+          <div class="stat-card"><div class="stat-val">KSh 1,120</div><div class="stat-lbl">Fares collected</div></div>
+        </div>
+        <div style="background:#f0faf4;border-radius:12px;padding:14px;margin-bottom:20px;border:1px solid #c0e8d0">
+          <div style="font-size:13px;font-weight:700;color:#0d7a3e;margin-bottom:6px">Reservations this trip</div>
+          <div style="font-size:12px;color:#555;margin-bottom:3px">✓ Amina Wanjiru — Githurai Stage (2 seats)</div>
+          <div style="font-size:12px;color:#555;margin-bottom:3px">✓ Peter Kamau — Muthaiga Stage (1 seat)</div>
+          <div style="font-size:12px;color:#aaa">✗ 1 no-show (seat freed)</div>
+        </div>
+        <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('d-home')">Back to home</button>
+        <button class="btn btn-secondary" onclick="go('d-start-trip')">Start another trip</button>
+      </div>
+
+      <!-- ===== NOTIFICATIONS ===== -->
+      <div class="screen" id="d-notifications">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('d-home')">←</button>
+          <span style="font-size:16px;font-weight:700">Notifications</span>
+          <span style="font-size:13px;color:#0d7a3e;cursor:pointer">Clear all</span>
+        </div>
+        <div class="page-content" style="padding:0 16px">
+          <div style="font-size:12px;font-weight:700;color:#aaa;margin:8px 0 6px;text-transform:uppercase">Just now</div>
+          <div class="notif">
+            <div style="width:36px;height:36px;border-radius:50%;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📍</div>
+            <div><div style="font-size:13px;font-weight:700;color:#111;margin-bottom:2px">Reserved pickup approaching</div><div style="font-size:12px;color:#888">Amina Wanjiru · Githurai Stage in 0.8 km</div></div>
+          </div>
+          <div class="notif">
+            <div style="width:36px;height:36px;border-radius:50%;background:#fff3e0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🙋</div>
+            <div><div style="font-size:13px;font-weight:700;color:#111;margin-bottom:2px">New pickup request</div><div style="font-size:12px;color:#888">Brian Otieno → Githurai · 0.4 km from you</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#aaa;margin:12px 0 6px;text-transform:uppercase">Earlier today</div>
+          <div class="notif">
+            <div style="width:36px;height:36px;border-radius:50%;background:#e6f6ee;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">✓</div>
+            <div><div style="font-size:13px;font-weight:700;color:#111;margin-bottom:2px">Rider confirmed at spot</div><div style="font-size:12px;color:#888">Peter Kamau is at Muthaiga Stage · tap to confirm pickup</div></div>
+          </div>
+          <div class="notif">
+            <div style="width:36px;height:36px;border-radius:50%;background:#ffe8e8;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">✕</div>
+            <div><div style="font-size:13px;font-weight:700;color:#111;margin-bottom:2px">Rider cancelled request</div><div style="font-size:12px;color:#888">Grace Wambui cancelled her flagging request</div></div>
+          </div>
+          <div class="notif">
+            <div style="width:36px;height:36px;border-radius:50%;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📅</div>
+            <div><div style="font-size:13px;font-weight:700;color:#111;margin-bottom:2px">New reservation</div><div style="font-size:12px;color:#888">Amina Wanjiru reserved 2 seats · #SMA-4721</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TRIP HISTORY ===== -->
+      <div class="screen" id="d-trip-history">
+        <div style="padding:16px 20px 8px">
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:12px">Trip history</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div class="stat-card"><div class="stat-val">48</div><div class="stat-lbl">Trips this week</div></div>
+            <div class="stat-card"><div class="stat-val">KSh 4,320</div><div class="stat-lbl">Earnings</div></div>
+          </div>
+        </div>
+        <div class="page-content" style="padding:0 16px">
+          <div style="font-size:12px;font-weight:700;color:#aaa;margin:0 0 8px;text-transform:uppercase">Today</div>
+          <div style="border:1px solid #f0f0f0;border-radius:12px;padding:14px;margin-bottom:8px" onclick="go('d-end-trip')">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <div><div style="font-size:14px;font-weight:700;color:#111">CBD → Thika Town</div><div style="font-size:12px;color:#888">7:06 – 8:01 AM · 55 min</div></div>
+              <span class="badge badge-green">Completed</span>
+            </div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:#888">14 pickups</span><span style="font-size:13px;font-weight:700;color:#0d7a3e">KSh 1,120</span></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#aaa;margin:12px 0 8px;text-transform:uppercase">Yesterday</div>
+          <div style="border:1px solid #f0f0f0;border-radius:12px;padding:14px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <div><div style="font-size:14px;font-weight:700;color:#111">CBD → Thika Town</div><div style="font-size:12px;color:#888">7:10 – 8:05 AM · 55 min</div></div>
+              <span class="badge badge-green">Completed</span>
+            </div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:#888">16 pickups</span><span style="font-size:13px;font-weight:700;color:#0d7a3e">KSh 1,280</span></div>
+          </div>
+          <div style="border:1px solid #f0f0f0;border-radius:12px;padding:14px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <div><div style="font-size:14px;font-weight:700;color:#111">CBD → Thika Town</div><div style="font-size:12px;color:#888">12:30 – 1:18 PM · 48 min</div></div>
+              <span class="badge badge-green">Completed</span>
+            </div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:#888">11 pickups</span><span style="font-size:13px;font-weight:700;color:#0d7a3e">KSh 880</span></div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="go('d-home')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#bbb"/></svg></div><span class="nav-label">Home</span></div>
+          <div class="nav-item" onclick="go('d-active-trip')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><circle cx="11" cy="12" r="3" stroke="#bbb" stroke-width="2"/></svg></div><span class="nav-label">Live trip</span></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#0d7a3e" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#0d7a3e" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label" style="color:#0d7a3e">History</span></div>
+          <div class="nav-item" onclick="go('d-profile')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#bbb" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Profile</span></div>
+        </div>
+      </div>
+
+      <!-- ===== PROFILE ===== -->
+      <div class="screen" id="d-profile">
+        <div style="padding:24px 20px 16px;text-align:center">
+          <div style="width:72px;height:72px;border-radius:50%;background:#e6f6ee;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0d7a3e;font-size:22px;margin:0 auto 10px">JM</div>
+          <div style="font-size:18px;font-weight:700;color:#111">James Mwangi</div>
+          <div style="font-size:13px;color:#888">+254 722 100 200</div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+            <span class="badge badge-green">Approved ✓</span>
+            <span class="badge badge-gray">KJA 001A</span>
+            <span class="badge badge-gray">Super Metro</span>
+          </div>
+        </div>
+        <div class="page-content" style="padding:0 16px">
+          <div style="background:#f8f8f8;border-radius:14px;overflow:hidden;margin-bottom:14px">
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0"><span style="font-size:14px;font-weight:600">Matatu details</span><span style="color:#ccc">›</span></div>
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0"><span style="font-size:14px;font-weight:600">Earnings summary</span><span style="color:#ccc">›</span></div>
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0"><span style="font-size:14px;font-weight:600">Notifications</span><span style="color:#ccc">›</span></div>
+            <div style="padding:14px 16px;display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:600">Help &amp; support</span><span style="color:#ccc">›</span></div>
+          </div>
+          <button class="btn btn-secondary">Sign out</button>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="go('d-home')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#bbb"/></svg></div><span class="nav-label">Home</span></div>
+          <div class="nav-item" onclick="go('d-active-trip')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><circle cx="11" cy="12" r="3" stroke="#bbb" stroke-width="2"/></svg></div><span class="nav-label">Live trip</span></div>
+          <div class="nav-item" onclick="go('d-trip-history')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">History</span></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#0d7a3e" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#0d7a3e" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label" style="color:#0d7a3e">Profile</span></div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+
+  <!-- JOURNEY PANEL -->
+  <div class="journey-panel">
+    <h3>Sema — Driver Journeys</h3>
+    <p>Tap any step to jump directly to it</p>
+    <div class="journey-list">
+      <div class="journey-group">Onboarding</div>
+      <button class="journey-btn active" id="jbtn-d-splash" onclick="jumpTo('d-splash',this)">Splash / landing</button>
+      <button class="journey-btn" id="jbtn-d-register" onclick="jumpTo('d-register',this)">Registration form</button>
+      <button class="journey-btn" id="jbtn-d-pending" onclick="jumpTo('d-pending',this)">Pending admin approval</button>
+      <button class="journey-btn" id="jbtn-d-approved" onclick="jumpTo('d-approved',this)">Approved notification</button>
+      <button class="journey-btn" id="jbtn-d-login" onclick="jumpTo('d-login',this)">Sign in</button>
+      <div class="journey-group">Before trip</div>
+      <button class="journey-btn" id="jbtn-d-home" onclick="jumpTo('d-home',this)">Home dashboard</button>
+      <button class="journey-btn" id="jbtn-d-start-trip" onclick="jumpTo('d-start-trip',this)">Set up trip form</button>
+      <div class="journey-group">Active trip</div>
+      <button class="journey-btn" id="jbtn-d-active-trip" onclick="jumpTo('d-active-trip',this)">Live trip map + requests</button>
+      <button class="journey-btn" id="jbtn-d-paused" onclick="jumpTo('d-paused',this)">Paused / unavailable</button>
+      <button class="journey-btn" id="jbtn-d-cluster-view" onclick="jumpTo('d-cluster-view',this)">Multi-rider cluster view</button>
+      <button class="journey-btn" id="jbtn-d-pickup-confirm" onclick="jumpTo('d-pickup-confirm',this)">Confirm pickups at stop</button>
+      <div class="journey-group">Decisions</div>
+      <button class="journey-btn" id="jbtn-d-reject-view" onclick="jumpTo('d-reject-view',this)">Reject rider flow</button>
+      <button class="journey-btn" id="jbtn-d-end-trip" onclick="jumpTo('d-end-trip',this)">Trip ended + summary</button>
+      <div class="journey-group">Account</div>
+      <button class="journey-btn" id="jbtn-d-notifications" onclick="jumpTo('d-notifications',this)">Notifications</button>
+      <button class="journey-btn" id="jbtn-d-trip-history" onclick="jumpTo('d-trip-history',this)">Trip history</button>
+      <button class="journey-btn" id="jbtn-d-profile" onclick="jumpTo('d-profile',this)">Profile</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let current='d-splash';
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const s=document.getElementById(id);
+  if(s){s.classList.add('active');s.scrollTop=0;}
+  current=id;
+  document.querySelectorAll('.journey-btn').forEach(b=>b.classList.remove('active'));
+  const jb=document.getElementById('jbtn-'+id);
+  if(jb)jb.classList.add('active');
+}
+function jumpTo(id){go(id);}
+
+let capacity=14;
+function adjCapacity(d){
+  capacity=Math.max(1,Math.min(20,capacity+d));
+  document.getElementById('capacity-num').textContent=capacity;
+}
+
+function toggleDot(id){
+  document.querySelectorAll('.rider-dot').forEach(d=>{if(d.id!==id)d.classList.remove('open')});
+  document.getElementById(id).classList.toggle('open');
+}
+function acceptRider(id,e){
+  e.stopPropagation();
+  document.getElementById(id).style.opacity='0.4';
+  document.getElementById(id).style.pointerEvents='none';
+  const seats=document.getElementById('live-seats');
+  seats.textContent=Math.max(0,parseInt(seats.textContent)-1);
+  showToast('Rider accepted! Seat count updated.');
+}
+function rejectRider(id,e){
+  e.stopPropagation();
+  document.getElementById(id).style.display='none';
+  showToast('Rider rejected. They have been notified.');
+}
+function acceptCard(btn){
+  const card=btn.closest('.rider-card');
+  const name=card.querySelector('.rider-name').textContent;
+  card.style.opacity='0.5';
+  card.style.pointerEvents='none';
+  card.querySelector('.rider-card-header').insertAdjacentHTML('beforeend','<span class="badge badge-green" style="margin-left:4px">Boarded ✓</span>');
+  const seats=document.getElementById('live-seats');
+  if(seats)seats.textContent=Math.max(0,parseInt(seats.textContent)-1);
+  showToast(name+' confirmed on board.');
+}
+function rejectCard(btn){
+  const card=btn.closest('.rider-card');
+  const name=card.querySelector('.rider-name').textContent;
+  card.style.opacity='0.4';card.style.pointerEvents='none';
+  showToast(name+' rejected. Alternative matatus suggested.');
+}
+function confirmPickup(cardId,name){
+  const card=document.getElementById(cardId);
+  card.style.background='#f0faf4';card.style.borderColor='#90d4b0';
+  card.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:4px 0"><div style="width:32px;height:32px;border-radius:50%;background:#e6f6ee;display:flex;align-items:center;justify-content:center;font-size:18px">✓</div><div><div style="font-size:14px;font-weight:700;color:#0d7a3e">'+name+' confirmed!</div><div style="font-size:12px;color:#888">Seat count updated · removed from map</div></div></div>';
+  const seats=document.getElementById('live-seats');
+  if(seats)seats.textContent=Math.max(0,parseInt(seats.textContent)-1);
+}
+function rejectPickup(cardId){
+  const card=document.getElementById(cardId);
+  card.style.background='#fff8f8';card.style.borderColor='#ffb0b0';
+  card.innerHTML='<div style="font-size:13px;color:#c00;font-weight:600;">No-show recorded. Seat freed.</div>';
+  showToast('Seat freed and reservation cancelled.');
+}
+function toggleAvail(){
+  const t=document.getElementById('avail-toggle');
+  if(t.classList.contains('on')){go('d-paused');}
+  else{go('d-active-trip');}
+}
+function selectReason(el){
+  el.closest('.rider-card')?.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>

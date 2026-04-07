@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sema - Matatu Hailing</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f0f0ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:24px 16px}
+  .outer{display:flex;gap:24px;align-items:flex-start;max-width:960px;width:100%}
+  .phone{width:375px;min-width:375px;background:#fff;border-radius:36px;border:8px solid #1a1a1a;overflow:hidden;box-shadow:0 0 0 2px #333;position:relative}
+  .phone-inner{height:720px;overflow:hidden;position:relative;background:#fff}
+  .status-bar{background:#fff;padding:12px 20px 4px;display:flex;justify-content:space-between;align-items:center}
+  .status-time{font-size:13px;font-weight:600;color:#111}
+  .status-icons{font-size:11px;color:#111;display:flex;gap:4px;align-items:center}
+  .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;background:#fff;overflow-y:auto}
+  .screen.active{display:flex}
+
+  /* NAV */
+  .bottom-nav{position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #eee;display:flex;z-index:100;padding:8px 0 12px}
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0}
+  .nav-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+  .nav-label{font-size:10px;color:#888}
+  .nav-item.active .nav-label{color:#1a5cff}
+  .nav-item.active .nav-icon svg path,.nav-item.active .nav-icon svg rect,.nav-item.active .nav-icon svg circle{fill:#1a5cff}
+
+  /* COMMON */
+  .btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+  .btn-primary{background:#1a5cff;color:#fff}
+  .btn-secondary{background:#f2f2f2;color:#333}
+  .btn-outline{background:#fff;color:#1a5cff;border:1.5px solid #1a5cff}
+  .btn-danger{background:#ff3b30;color:#fff}
+  .btn-sm{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600}
+  .input{width:100%;padding:12px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:15px;outline:none;font-family:inherit}
+  .input:focus{border-color:#1a5cff}
+  .label{font-size:12px;color:#888;margin-bottom:6px;display:block}
+  .page-content{flex:1;overflow-y:auto;padding-bottom:80px}
+  .section-title{font-size:18px;font-weight:700;color:#111;margin-bottom:4px}
+  .section-sub{font-size:13px;color:#888;margin-bottom:20px}
+  .toast{position:absolute;bottom:90px;left:16px;right:16px;background:#111;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;text-align:center;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+  .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-blue{background:#e8f0ff;color:#1a5cff}
+  .badge-green{background:#e6f6ee;color:#0a7a3e}
+  .badge-orange{background:#fff3e0;color:#d06000}
+  .badge-red{background:#ffe8e8;color:#d00}
+  .chip{padding:6px 12px;border-radius:20px;border:1.5px solid #e0e0e0;font-size:13px;cursor:pointer;white-space:nowrap}
+  .chip.active{border-color:#1a5cff;color:#1a5cff;background:#f0f5ff}
+  .divider{height:1px;background:#f0f0f0;margin:12px 0}
+  .alert-banner{padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;margin:0 16px 12px}
+  .alert-orange{background:#fff3e0;color:#d06000;border:1px solid #ffd080}
+  .alert-blue{background:#e8f0ff;color:#1a5cff;border:1px solid #a8c0ff}
+  .alert-green{background:#e6f6ee;color:#0a7a3e;border:1px solid #90d4b0}
+
+  /* HEADER */
+  .app-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between}
+  .back-btn{width:32px;height:32px;border-radius:50%;background:#f2f2f2;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:16px}
+
+  /* MAP PLACEHOLDER */
+  .map-placeholder{background:#e8eedf;position:relative;overflow:hidden}
+  .map-road{position:absolute;background:#fff;opacity:.5}
+  .map-road-h{height:3px;left:0;right:0}
+  .map-road-v{width:3px;top:0;bottom:0}
+  .map-dot{position:absolute;width:12px;height:12px;border-radius:50%;border:2px solid #fff}
+  .map-dot-blue{background:#1a5cff}
+  .map-dot-orange{background:#ff8c00}
+  .map-dot-green{background:#00aa55}
+  .map-label{position:absolute;background:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#111;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+  .map-pin{position:absolute;width:10px;height:10px;border-radius:50%;background:#ff3b30;border:2px solid #fff}
+  .pulse{animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* MATATU CARD */
+  .matatu-card{margin:0 16px 12px;padding:14px;border:1.5px solid #f0f0f0;border-radius:14px;cursor:pointer;transition:border-color .2s}
+  .matatu-card:hover{border-color:#1a5cff}
+  .matatu-card.selected{border-color:#1a5cff;background:#f7f9ff}
+  .matatu-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  .plate{font-size:16px;font-weight:700;color:#111}
+  .sacco{font-size:12px;color:#888;margin-top:1px}
+  .matatu-stats{display:flex;gap:12px}
+  .stat{display:flex;flex-direction:column;gap:1px}
+  .stat-val{font-size:14px;font-weight:600;color:#111}
+  .stat-lbl{font-size:10px;color:#aaa}
+  .stars{color:#f5a623;font-size:12px}
+
+  /* RESERVATION CARD */
+  .res-card{margin:0 16px 12px;padding:16px;background:#f7f9ff;border:1.5px solid #c0d0ff;border-radius:14px}
+  .res-id{font-size:11px;color:#888;margin-bottom:4px}
+  .res-title{font-size:15px;font-weight:700;color:#111;margin-bottom:10px}
+  .res-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .res-key{font-size:12px;color:#888}
+  .res-val{font-size:13px;font-weight:600;color:#111}
+
+  /* STEP INDICATOR */
+  .step-indicator{display:flex;gap:4px;justify-content:center;padding:12px 0 0}
+  .step-dot{width:6px;height:6px;border-radius:50%;background:#e0e0e0}
+  .step-dot.active{background:#1a5cff;width:18px;border-radius:3px}
+
+  /* JOURNEY NAV PANEL */
+  .journey-panel{flex:1;background:#fff;border-radius:16px;border:1px solid #e8e8e8;padding:20px;min-width:220px;max-width:260px}
+  .journey-panel h3{font-size:14px;font-weight:700;color:#111;margin-bottom:4px}
+  .journey-panel p{font-size:12px;color:#888;margin-bottom:16px}
+  .journey-list{display:flex;flex-direction:column;gap:4px}
+  .journey-btn{width:100%;text-align:left;padding:9px 12px;border-radius:8px;border:none;background:transparent;font-size:13px;color:#444;cursor:pointer;transition:background .15s}
+  .journey-btn:hover{background:#f5f5f5}
+  .journey-btn.active{background:#f0f5ff;color:#1a5cff;font-weight:600}
+  .journey-group{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 4px 4px}
+
+  /* OTP */
+  .otp-row{display:flex;gap:8px;justify-content:center;margin:16px 0}
+  .otp-box{width:44px;height:52px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:22px;font-weight:700;text-align:center;outline:none;font-family:inherit}
+  .otp-box:focus{border-color:#1a5cff}
+
+  /* PROGRESS */
+  .progress-bar{height:4px;background:#f0f0f0;border-radius:2px;margin:0 16px 16px}
+  .progress-fill{height:100%;background:#1a5cff;border-radius:2px;transition:width .4s}
+
+  /* COUNTDOWN */
+  .countdown{font-size:32px;font-weight:700;color:#1a5cff;text-align:center;padding:8px 0}
+
+  /* SEAT GRID */
+  .seat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}
+  .seat{padding:10px 4px;border-radius:8px;border:1.5px solid #e0e0e0;font-size:11px;font-weight:600;text-align:center;cursor:pointer}
+  .seat.avail{background:#fff;color:#333;border-color:#d0d0d0}
+  .seat.taken{background:#f0f0f0;color:#bbb;border-color:#e8e8e8;cursor:not-allowed}
+  .seat.selected-seat{background:#e8f0ff;color:#1a5cff;border-color:#1a5cff}
+
+  /* NOTIFICATION */
+  .notif{padding:12px 14px;border-radius:10px;background:#f8f8f8;border:1px solid #e8e8e8;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+  .notif-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+  .notif-blue{background:#e8f0ff}
+  .notif-orange{background:#fff3e0}
+  .notif-green{background:#e6f6ee}
+</style>
+</head>
+<body>
+<div class="outer">
+  <!-- PHONE -->
+  <div class="phone">
+    <div class="phone-inner" id="phoneInner">
+
+      <!-- ===== SCREEN 0: SPLASH ===== -->
+      <div class="screen active" id="s-splash" style="justify-content:center;align-items:center;background:#1a5cff;padding:40px">
+        <div style="text-align:center">
+          <div style="width:72px;height:72px;background:#fff;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+              <rect x="4" y="14" width="36" height="18" rx="4" fill="#1a5cff"/>
+              <rect x="8" y="18" width="12" height="8" rx="2" fill="#fff" opacity=".8"/>
+              <rect x="24" y="18" width="12" height="8" rx="2" fill="#fff" opacity=".8"/>
+              <circle cx="11" cy="33" r="4" fill="#1a5cff" stroke="#fff" stroke-width="2"/>
+              <circle cx="33" cy="33" r="4" fill="#1a5cff" stroke="#fff" stroke-width="2"/>
+            </svg>
+          </div>
+          <div style="font-size:32px;font-weight:800;color:#fff;letter-spacing:-1px">Sema</div>
+          <div style="font-size:14px;color:rgba(255,255,255,.7);margin-top:6px;margin-bottom:48px">Matatu hailing, reimagined</div>
+          <button class="btn" style="background:#fff;color:#1a5cff;margin-bottom:12px" onclick="go('s-register')">Create account</button>
+          <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3)" onclick="go('s-home')">Browse as guest</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 1: REGISTER ===== -->
+      <div class="screen" id="s-register" style="padding:0">
+        <div class="page-content" style="padding:20px">
+          <button class="back-btn" onclick="go('s-splash')" style="margin-bottom:20px">←</button>
+          <div class="step-indicator" style="justify-content:flex-start;padding:0 0 16px">
+            <div class="step-dot active"></div>
+            <div class="step-dot"></div>
+            <div class="step-dot"></div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:33%"></div></div>
+          <div class="section-title">Create account</div>
+          <div class="section-sub">Let's get you started</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div><label class="label">Full name</label><input class="input" type="text" placeholder="e.g. Amina Wanjiru" value="Amina Wanjiru"></div>
+            <div><label class="label">Phone number</label><input class="input" type="tel" placeholder="+254 7XX XXX XXX" value="+254 712 345 678"></div>
+            <div><label class="label">Email address</label><input class="input" type="email" placeholder="you@example.com" value="amina@email.com"></div>
+            <div><label class="label">Date of birth</label><input class="input" type="date" value="1998-03-15"></div>
+            <div style="margin-top:4px">
+              <button class="btn btn-primary" onclick="go('s-otp')">Send OTP →</button>
+            </div>
+            <p style="font-size:12px;color:#aaa;text-align:center">By continuing you agree to our Terms &amp; Privacy Policy</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 2: OTP ===== -->
+      <div class="screen" id="s-otp" style="padding:20px">
+        <button class="back-btn" onclick="go('s-register')" style="margin-bottom:20px">←</button>
+        <div class="step-indicator" style="justify-content:flex-start;padding:0 0 16px">
+          <div class="step-dot"></div>
+          <div class="step-dot active"></div>
+          <div class="step-dot"></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:66%"></div></div>
+        <div class="section-title">Verify your phone</div>
+        <div class="section-sub">Enter the 6-digit code sent to +254 712 345 678</div>
+        <div class="otp-row">
+          <input class="otp-box" maxlength="1" value="4">
+          <input class="otp-box" maxlength="1" value="8">
+          <input class="otp-box" maxlength="1" value="2">
+          <input class="otp-box" maxlength="1" value="">
+          <input class="otp-box" maxlength="1" value="">
+          <input class="otp-box" maxlength="1" value="" style="border-color:#1a5cff">
+        </div>
+        <div style="text-align:center;margin-bottom:24px">
+          <span style="font-size:13px;color:#888">Didn't receive it? </span>
+          <span style="font-size:13px;color:#1a5cff;cursor:pointer">Resend (0:42)</span>
+        </div>
+        <button class="btn btn-primary" onclick="go('s-home')">Verify &amp; Continue →</button>
+        <div class="alert-banner alert-blue" style="margin:16px 0 0">
+          <span style="font-size:12px">For demo: tap Verify to proceed directly to your dashboard</span>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 3: HOME DASHBOARD ===== -->
+      <div class="screen" id="s-home">
+        <div style="padding:16px 20px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div>
+              <div style="font-size:13px;color:#888">Good morning,</div>
+              <div style="font-size:20px;font-weight:700;color:#111">Amina 👋</div>
+            </div>
+            <div style="width:40px;height:40px;border-radius:50%;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a5cff;font-size:14px">AW</div>
+          </div>
+        </div>
+        <div class="page-content" style="padding:12px 20px 0">
+          <!-- Search bar -->
+          <div style="position:relative;margin-bottom:16px" onclick="go('s-search')">
+            <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%)" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="#888" stroke-width="1.5"/><path d="M10 10L14 14" stroke="#888" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input class="input" style="padding-left:38px;cursor:pointer" placeholder="Where are you going?" readonly>
+          </div>
+          <!-- Quick actions -->
+          <div style="display:flex;gap:10px;margin-bottom:20px">
+            <div style="flex:1;background:#1a5cff;border-radius:14px;padding:16px;cursor:pointer" onclick="go('s-search')">
+              <div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:4px">Ride now</div>
+              <div style="font-size:14px;font-weight:700;color:#fff">Find a matatu</div>
+              <div style="margin-top:10px;font-size:20px">🚍</div>
+            </div>
+            <div style="flex:1;background:#f7f9ff;border:1.5px solid #dce6ff;border-radius:14px;padding:16px;cursor:pointer" onclick="go('s-reserve-time')">
+              <div style="font-size:11px;color:#888;margin-bottom:4px">Plan ahead</div>
+              <div style="font-size:14px;font-weight:700;color:#111">Schedule ride</div>
+              <div style="margin-top:10px;font-size:20px">📅</div>
+            </div>
+          </div>
+          <!-- Recent routes -->
+          <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:10px">Recent routes</div>
+          <div onclick="goRoute('CBD → Thika')" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f5f5f5;cursor:pointer">
+            <div style="width:36px;height:36px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;justify-content:center;font-size:16px">🏢</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:600;color:#111">CBD → Thika</div><div style="font-size:12px;color:#888">KSh 80 · 12 mins ago</div></div>
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+          </div>
+          <div onclick="goRoute('Westlands → CBD')" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f5f5f5;cursor:pointer">
+            <div style="width:36px;height:36px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;justify-content:center;font-size:16px">🏬</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:600;color:#111">Westlands → CBD</div><div style="font-size:12px;color:#888">KSh 50 · Yesterday</div></div>
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active" onclick="go('s-home')">
+            <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#1a5cff"/></svg></div>
+            <span class="nav-label" style="color:#1a5cff">Home</span>
+          </div>
+          <div class="nav-item" onclick="go('s-search')">
+            <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9" cy="9" r="6" stroke="#bbb" stroke-width="2"/><path d="M14 14l5 5" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <span class="nav-label">Search</span>
+          </div>
+          <div class="nav-item" onclick="go('s-my-trips')">
+            <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <span class="nav-label">Trips</span>
+          </div>
+          <div class="nav-item" onclick="go('s-profile')">
+            <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#bbb" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <span class="nav-label">Profile</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 4: SEARCH / ROUTE DISCOVERY ===== -->
+      <div class="screen" id="s-search">
+        <div style="padding:16px 16px 8px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <button class="back-btn" onclick="go('s-home')">←</button>
+            <input class="input" style="flex:1" placeholder="Where to?" value="Thika Town" id="dest-input">
+          </div>
+          <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
+            <div class="chip active">All</div>
+            <div class="chip">Super Metro</div>
+            <div class="chip">OMA</div>
+            <div class="chip">Nearby</div>
+            <div class="chip">By rating</div>
+          </div>
+        </div>
+        <!-- Map placeholder -->
+        <div class="map-placeholder" style="height:160px;flex-shrink:0">
+          <div class="map-road map-road-h" style="top:40%"></div>
+          <div class="map-road map-road-h" style="top:70%"></div>
+          <div class="map-road map-road-v" style="left:30%"></div>
+          <div class="map-road map-road-v" style="left:65%"></div>
+          <div class="map-dot map-dot-blue pulse" style="bottom:20px;left:40px"></div>
+          <div class="map-label" style="bottom:35px;left:30px">You</div>
+          <div class="map-dot map-dot-green" style="top:30px;right:60px"></div>
+          <div class="map-label" style="top:15px;right:40px">KJA 001</div>
+          <div class="map-dot map-dot-green" style="top:50px;left:60%"></div>
+          <div class="map-label" style="top:35px;left:57%">KBZ 445</div>
+          <div class="map-dot map-dot-orange" style="bottom:30px;left:55%"></div>
+          <div class="map-label" style="bottom:45px;left:52%">KDA 223</div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 160">
+            <path d="M40 120 Q120 80 240 60 Q290 50 330 30" stroke="#1a5cff" stroke-width="2" fill="none" stroke-dasharray="5,4" opacity=".5"/>
+          </svg>
+        </div>
+        <div class="page-content" style="padding:12px 0 0">
+          <div style="padding:0 16px;font-size:13px;color:#888;margin-bottom:8px">3 matatus found · CBD → Thika</div>
+          <!-- Matatu 1 -->
+          <div class="matatu-card selected" onclick="go('s-matatu-detail')">
+            <div class="matatu-header">
+              <div><div class="plate">KJA 001A</div><div class="sacco">Super Metro</div></div>
+              <span class="badge badge-green">8 seats</span>
+            </div>
+            <div class="matatu-stats">
+              <div class="stat"><div class="stat-val">2 min</div><div class="stat-lbl">ETA to you</div></div>
+              <div class="stat"><div class="stat-val">KSh 80</div><div class="stat-lbl">Fare</div></div>
+              <div class="stat"><div class="stat-val stars">★★★★☆</div><div class="stat-lbl">4.2</div></div>
+            </div>
+          </div>
+          <!-- Matatu 2 -->
+          <div class="matatu-card" onclick="selectMatatu(this)">
+            <div class="matatu-header">
+              <div><div class="plate">KBZ 445K</div><div class="sacco">OMA Sacco</div></div>
+              <span class="badge badge-orange">3 seats</span>
+            </div>
+            <div class="matatu-stats">
+              <div class="stat"><div class="stat-val">5 min</div><div class="stat-lbl">ETA to you</div></div>
+              <div class="stat"><div class="stat-val">KSh 80</div><div class="stat-lbl">Fare</div></div>
+              <div class="stat"><div class="stat-val stars">★★★★★</div><div class="stat-lbl">4.8</div></div>
+            </div>
+          </div>
+          <!-- Matatu 3 -->
+          <div class="matatu-card" onclick="selectMatatu(this)">
+            <div class="matatu-header">
+              <div><div class="plate">KDA 223B</div><div class="sacco">City Shuttle</div></div>
+              <span class="badge badge-blue">12 seats</span>
+            </div>
+            <div class="matatu-stats">
+              <div class="stat"><div class="stat-val">9 min</div><div class="stat-lbl">ETA to you</div></div>
+              <div class="stat"><div class="stat-val">KSh 70</div><div class="stat-lbl">Fare</div></div>
+              <div class="stat"><div class="stat-val stars">★★★☆☆</div><div class="stat-lbl">3.5</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="go('s-home')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#bbb"/></svg></div><span class="nav-label">Home</span></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9" cy="9" r="6" stroke="#1a5cff" stroke-width="2"/><path d="M14 14l5 5" stroke="#1a5cff" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label" style="color:#1a5cff">Search</span></div>
+          <div class="nav-item" onclick="go('s-my-trips')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Trips</span></div>
+          <div class="nav-item" onclick="go('s-profile')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#bbb" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Profile</span></div>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 5: MATATU DETAIL ===== -->
+      <div class="screen" id="s-matatu-detail">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-search')">←</button>
+          <span style="font-size:16px;font-weight:700">KJA 001A</span>
+          <span class="badge badge-green">8 seats</span>
+        </div>
+        <div class="map-placeholder" style="height:180px;flex-shrink:0">
+          <div class="map-road map-road-h" style="top:50%"></div>
+          <div class="map-road map-road-v" style="left:50%"></div>
+          <div class="map-dot map-dot-blue pulse" style="bottom:20px;left:40px"></div>
+          <div class="map-dot map-dot-green" style="top:40px;right:50px"></div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 180">
+            <path d="M40 150 Q100 100 180 80 Q240 60 310 40" stroke="#1a5cff" stroke-width="3" fill="none"/>
+            <circle cx="80" cy="130" r="5" fill="#888"/>
+            <circle cx="160" cy="95" r="5" fill="#888"/>
+            <circle cx="240" cy="68" r="5" fill="#888"/>
+            <text x="85" y="128" font-size="9" fill="#555">Muthaiga</text>
+            <text x="165" y="93" font-size="9" fill="#555">Githurai</text>
+            <text x="245" y="66" font-size="9" fill="#555">Ruiru</text>
+          </svg>
+        </div>
+        <div class="page-content" style="padding:14px 16px 0">
+          <div style="background:#f8f8f8;border-radius:12px;padding:14px;margin-bottom:14px">
+            <div style="font-size:13px;color:#888;margin-bottom:8px">Route</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:#111">
+              <span>CBD</span>
+              <svg width="16" height="10" viewBox="0 0 16 10"><path d="M0 5h13M9 1l4 4-4 4" stroke="#888" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+              <span>Muthaiga</span>
+              <svg width="16" height="10" viewBox="0 0 16 10"><path d="M0 5h13M9 1l4 4-4 4" stroke="#888" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+              <span>Thika</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:#f8f8f8;border-radius:10px;padding:12px"><div style="font-size:11px;color:#888">ETA to you</div><div style="font-size:16px;font-weight:700;color:#111">2 min</div></div>
+            <div style="background:#f8f8f8;border-radius:10px;padding:12px"><div style="font-size:11px;color:#888">Fare</div><div style="font-size:16px;font-weight:700;color:#111">KSh 80</div></div>
+            <div style="background:#f8f8f8;border-radius:10px;padding:12px"><div style="font-size:11px;color:#888">Sacco</div><div style="font-size:15px;font-weight:700;color:#111">Super Metro</div></div>
+            <div style="background:#f8f8f8;border-radius:10px;padding:12px"><div style="font-size:11px;color:#888">Rating</div><div style="font-size:15px;font-weight:700;color:#111">★ 4.2</div></div>
+          </div>
+          <div style="font-size:13px;color:#888;margin-bottom:6px">Driver</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a5cff;font-size:13px">JM</div>
+            <div><div style="font-size:14px;font-weight:600;color:#111">James Mwangi</div><div style="font-size:12px;color:#888">KJA 001A · Super Metro</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-primary" onclick="go('s-flag-active')">Flag me now (I'm Traveling)</button>
+            <button class="btn btn-outline" onclick="go('s-pickup-spot')">Set pickup spot</button>
+            <button class="btn btn-secondary" onclick="go('s-reserve-time')">Reserve a seat</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 6: SPONTANEOUS FLAGGING ACTIVE ===== -->
+      <div class="screen" id="s-flag-active">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-matatu-detail')">←</button>
+          <span style="font-size:16px;font-weight:700">Waiting for pickup</span>
+          <span class="badge badge-orange">Live</span>
+        </div>
+        <div class="map-placeholder" style="height:240px;flex-shrink:0">
+          <div class="map-road map-road-h" style="top:50%"></div>
+          <div class="map-road map-road-v" style="left:40%"></div>
+          <div class="map-dot map-dot-blue pulse" style="bottom:30px;left:60px"></div>
+          <div class="map-label" style="bottom:45px;left:50px;background:#1a5cff;color:#fff">You</div>
+          <div class="map-dot map-dot-green" style="top:60px;right:80px" id="matatu-moving"></div>
+          <div class="map-label" style="top:45px;right:60px">KJA 001</div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 240">
+            <path d="M60 200 Q130 150 200 100 Q260 70 310 50" stroke="#1a5cff" stroke-width="2.5" fill="none" opacity=".6"/>
+            <line x1="60" y1="200" x2="280" y2="80" stroke="#ff8c00" stroke-width="1.5" stroke-dasharray="4,4" opacity=".5"/>
+          </svg>
+        </div>
+        <div class="page-content" style="padding:12px 16px 0">
+          <div class="alert-banner alert-orange" id="proximity-banner">
+            <div style="font-size:13px;font-weight:700">📍 Matatu 1.5 km away</div>
+            <div style="font-size:12px;margin-top:2px">Start making your way to the road</div>
+          </div>
+          <div style="background:#f8f8f8;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+            <div style="flex:1">
+              <div style="font-size:12px;color:#888">KJA 001A · Super Metro</div>
+              <div style="font-size:15px;font-weight:700;color:#111;margin-top:2px">Arriving in ~2 min</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:20px;font-weight:800;color:#1a5cff" id="eta-counter">2:00</div>
+              <div style="font-size:10px;color:#888">estimated</div>
+            </div>
+          </div>
+          <div style="font-size:13px;color:#888;margin-bottom:8px">You're visible to the driver. Tap when you see the matatu.</div>
+          <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('s-flag-boarding')">Pick Me Up! 🙋</button>
+          <button class="btn btn-secondary" onclick="go('s-search')">Cancel request</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 7: BOARDING CONFIRM ===== -->
+      <div class="screen" id="s-flag-boarding" style="padding:20px;justify-content:center">
+        <div style="text-align:center;padding:24px 0">
+          <div style="width:72px;height:72px;background:#e8f0ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px">🚍</div>
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:6px">Driver accepted!</div>
+          <div style="font-size:14px;color:#888;margin-bottom:24px">KJA 001A is stopping for you. Board and confirm.</div>
+        </div>
+        <div class="alert-banner alert-green" style="margin:0 0 16px">
+          <div style="font-size:13px;font-weight:700">✓ Driver: James Mwangi confirmed your request</div>
+        </div>
+        <div style="background:#f8f8f8;border-radius:12px;padding:14px;margin-bottom:20px">
+          <div class="res-row"><span class="res-key">Matatu</span><span class="res-val">KJA 001A</span></div>
+          <div class="res-row"><span class="res-key">Destination</span><span class="res-val">Thika Town</span></div>
+          <div class="res-row"><span class="res-key">Fare</span><span class="res-val">KSh 80</span></div>
+        </div>
+        <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('s-trip-live')">I'm On Board ✓</button>
+        <button class="btn btn-danger" onclick="go('s-search')">Not my matatu</button>
+      </div>
+
+      <!-- ===== SCREEN 8: PICKUP SPOT ===== -->
+      <div class="screen" id="s-pickup-spot">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-matatu-detail')">←</button>
+          <span style="font-size:16px;font-weight:700">Set pickup spot</span>
+          <span style="font-size:13px;color:#1a5cff;cursor:pointer">Done</span>
+        </div>
+        <div class="map-placeholder" style="height:280px;flex-shrink:0;position:relative">
+          <div class="map-road map-road-h" style="top:45%"></div>
+          <div class="map-road map-road-h" style="top:70%"></div>
+          <div class="map-road map-road-v" style="left:35%"></div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 280">
+            <path d="M30 240 Q100 180 200 130 Q280 90 340 50" stroke="#1a5cff" stroke-width="3" fill="none"/>
+            <circle cx="80" cy="205" r="7" fill="#888"/>
+            <circle cx="160" cy="158" r="7" fill="#888"/>
+            <circle cx="240" cy="112" r="7" fill="#888"/>
+            <text x="90" y="203" font-size="10" fill="#444">Muthaiga Stg</text>
+            <text x="170" y="156" font-size="10" fill="#444">Githurai Stg</text>
+            <text x="250" y="110" font-size="10" fill="#444">Ruiru Stg</text>
+          </svg>
+          <div style="position:absolute;top:40%;left:45%;transform:translate(-50%,-50%)">
+            <div style="width:16px;height:16px;background:#ff3b30;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;"></div>
+          </div>
+          <div class="map-label" style="top:28%;left:40%;background:#ff3b30;color:#fff">Tap to set spot</div>
+          <div class="map-dot map-dot-blue pulse" style="bottom:30px;left:50px"></div>
+        </div>
+        <div class="page-content" style="padding:14px 16px 0">
+          <div style="font-size:13px;color:#888;margin-bottom:8px">Or select a stage along the route:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+            <div class="chip active" onclick="selectStage(this,'Muthaiga Stage')">Muthaiga Stage</div>
+            <div class="chip" onclick="selectStage(this,'Githurai Stage')">Githurai Stage</div>
+            <div class="chip" onclick="selectStage(this,'Ruiru Stage')">Ruiru Stage</div>
+          </div>
+          <div style="background:#f0f5ff;border-radius:10px;padding:12px;margin-bottom:16px">
+            <div style="font-size:12px;color:#888">Selected spot</div>
+            <div style="font-size:14px;font-weight:700;color:#1a5cff" id="selected-stage">Muthaiga Stage</div>
+          </div>
+          <button class="btn btn-primary" onclick="go('s-pickup-waiting')">Alert Me When Near →</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 9: PICKUP SPOT WAITING ===== -->
+      <div class="screen" id="s-pickup-waiting">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-pickup-spot')">←</button>
+          <span style="font-size:16px;font-weight:700">Monitoring matatus</span>
+          <span class="badge badge-blue">Active</span>
+        </div>
+        <div class="map-placeholder" style="height:220px;flex-shrink:0">
+          <div class="map-road map-road-h" style="top:50%"></div>
+          <div class="map-road map-road-v" style="left:50%"></div>
+          <div class="map-pin" style="top:38%;left:45%;transform:translate(-50%,-50%)"></div>
+          <div class="map-label" style="top:22%;left:32%;background:#ff3b30;color:#fff">Muthaiga Stage</div>
+          <div class="map-dot map-dot-green" style="top:20px;right:40px" id="spot-matatu"></div>
+          <div class="map-label" style="top:8px;right:20px">KJA 001</div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 220">
+            <path d="M30 190 Q120 140 200 100 Q270 70 340 40" stroke="#1a5cff" stroke-width="2.5" fill="none" opacity=".6"/>
+          </svg>
+        </div>
+        <div class="page-content" style="padding:14px 16px 0">
+          <div style="display:flex;align-items:center;gap:12px;background:#f0f5ff;border-radius:12px;padding:14px;margin-bottom:14px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#1a5cff;display:flex;align-items:center;justify-content:center;font-size:18px">📍</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#111">Waiting at Muthaiga Stage</div>
+              <div style="font-size:12px;color:#888">Monitoring KJA 001A · Super Metro</div>
+            </div>
+          </div>
+          <div class="alert-banner alert-blue" style="margin:0 0 14px">
+            <div style="font-size:13px;font-weight:700">🔔 KJA 001A is 1.5 km away</div>
+            <div style="font-size:12px;margin-top:2px">Head to Muthaiga Stage now</div>
+          </div>
+          <div style="font-size:13px;color:#888;margin-bottom:14px">Once the matatu is visible, tap the button below.</div>
+          <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('s-flag-boarding')">Pick Me Up! 🙋</button>
+          <button class="btn btn-secondary" onclick="go('s-home')">Cancel monitoring</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 10: RESERVE - TIME PICKER ===== -->
+      <div class="screen" id="s-reserve-time">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-home')">←</button>
+          <span style="font-size:16px;font-weight:700">Schedule a ride</span>
+          <div></div>
+        </div>
+        <div class="page-content" style="padding:16px">
+          <div style="margin-bottom:16px">
+            <label class="label">Destination</label>
+            <input class="input" value="Thika Town">
+          </div>
+          <div style="margin-bottom:16px">
+            <label class="label">Date</label>
+            <input class="input" type="date" value="2025-03-21">
+          </div>
+          <div style="margin-bottom:8px">
+            <label class="label">Departure time</label>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="time-grid">
+              <div class="chip" onclick="selectTime(this)">7:00 AM</div>
+              <div class="chip active" onclick="selectTime(this)">7:30 AM</div>
+              <div class="chip" onclick="selectTime(this)">8:00 AM</div>
+              <div class="chip" onclick="selectTime(this)">8:30 AM</div>
+              <div class="chip" onclick="selectTime(this)">9:00 AM</div>
+              <div class="chip" onclick="selectTime(this)">9:30 AM</div>
+            </div>
+          </div>
+          <div style="margin:16px 0">
+            <label class="label">Number of seats</label>
+            <div style="display:flex;align-items:center;gap:16px">
+              <button class="btn-sm btn-secondary btn" style="width:40px" onclick="adjSeats(-1)">−</button>
+              <span style="font-size:20px;font-weight:700;color:#111" id="seat-count">1</span>
+              <button class="btn-sm btn-secondary btn" style="width:40px" onclick="adjSeats(1)">+</button>
+              <span style="font-size:12px;color:#aaa">max 3</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="go('s-reserve-matatu')">Find available matatus →</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 11: RESERVE - MATATU LIST ===== -->
+      <div class="screen" id="s-reserve-matatu">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-reserve-time')">←</button>
+          <span style="font-size:16px;font-weight:700">Available at 7:30 AM</span>
+          <div></div>
+        </div>
+        <div class="page-content" style="padding:12px 0 0">
+          <div style="padding:0 16px;font-size:13px;color:#888;margin-bottom:8px">Thika Town · 21 Mar · 2 seats</div>
+          <div class="matatu-card selected">
+            <div class="matatu-header">
+              <div><div class="plate">KJA 001A</div><div class="sacco">Super Metro</div></div>
+              <span class="badge badge-green">8 seats left</span>
+            </div>
+            <div class="matatu-stats">
+              <div class="stat"><div class="stat-val">7:30 AM</div><div class="stat-lbl">Departure</div></div>
+              <div class="stat"><div class="stat-val">KSh 80</div><div class="stat-lbl">Per seat</div></div>
+              <div class="stat"><div class="stat-val stars">★★★★☆</div><div class="stat-lbl">4.2</div></div>
+            </div>
+          </div>
+          <div class="matatu-card" onclick="selectMatatu(this)">
+            <div class="matatu-header">
+              <div><div class="plate">KBZ 445K</div><div class="sacco">OMA Sacco</div></div>
+              <span class="badge badge-orange">2 seats left</span>
+            </div>
+            <div class="matatu-stats">
+              <div class="stat"><div class="stat-val">7:45 AM</div><div class="stat-lbl">Departure</div></div>
+              <div class="stat"><div class="stat-val">KSh 80</div><div class="stat-lbl">Per seat</div></div>
+              <div class="stat"><div class="stat-val stars">★★★★★</div><div class="stat-lbl">4.8</div></div>
+            </div>
+          </div>
+          <div style="padding:0 16px;margin-top:8px">
+            <button class="btn btn-primary" onclick="go('s-reserve-seat-pick')">Continue with KJA 001A →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 12: RESERVE - SEAT PICKER ===== -->
+      <div class="screen" id="s-reserve-seat-pick">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-reserve-matatu')">←</button>
+          <span style="font-size:16px;font-weight:700">Choose seats</span>
+          <div></div>
+        </div>
+        <div class="page-content" style="padding:16px">
+          <div style="background:#f8f8f8;border-radius:10px;padding:12px;margin-bottom:16px;text-align:center">
+            <div style="font-size:11px;color:#888">KJA 001A · Super Metro</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#1a5cff"></div><span style="font-size:12px;color:#888">Selected</span>
+              <div style="width:6px;height:6px;border-radius:50%;background:#e0e0e0"></div><span style="font-size:12px;color:#888">Available</span>
+              <div style="width:6px;height:6px;border-radius:50%;background:#f0f0f0;border:1px solid #ddd"></div><span style="font-size:12px;color:#888">Taken</span>
+            </div>
+          </div>
+          <div style="font-size:12px;color:#888;margin-bottom:6px;text-align:center">Driver</div>
+          <div style="background:#f2f2f2;border-radius:8px;padding:8px;text-align:center;margin-bottom:10px;font-size:12px;color:#888">🚗 Front</div>
+          <div class="seat-grid">
+            <div class="seat taken">1A</div>
+            <div class="seat taken">1B</div>
+            <div class="seat avail" onclick="toggleSeat(this)">1C</div>
+            <div class="seat avail" onclick="toggleSeat(this)">1D</div>
+            <div class="seat selected-seat" onclick="toggleSeat(this)">2A</div>
+            <div class="seat avail" onclick="toggleSeat(this)">2B</div>
+            <div class="seat taken">2C</div>
+            <div class="seat avail" onclick="toggleSeat(this)">2D</div>
+            <div class="seat selected-seat" onclick="toggleSeat(this)">3A</div>
+            <div class="seat avail" onclick="toggleSeat(this)">3B</div>
+            <div class="seat avail" onclick="toggleSeat(this)">3C</div>
+            <div class="seat taken">3D</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 16px">
+            <span style="font-size:14px;color:#888">2 seats selected</span>
+            <span style="font-size:16px;font-weight:700;color:#111">KSh 160 total</span>
+          </div>
+          <button class="btn btn-primary" onclick="go('s-reserve-pickup-loc')">Set pickup location →</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 13: RESERVE - PICKUP LOCATION ===== -->
+      <div class="screen" id="s-reserve-pickup-loc">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-reserve-seat-pick')">←</button>
+          <span style="font-size:16px;font-weight:700">Pickup location</span>
+          <div></div>
+        </div>
+        <div class="map-placeholder" style="height:200px;flex-shrink:0">
+          <div class="map-road map-road-h" style="top:55%"></div>
+          <div class="map-road map-road-v" style="left:40%"></div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 200">
+            <path d="M30 170 Q120 120 200 85 Q270 58 340 35" stroke="#1a5cff" stroke-width="3" fill="none"/>
+            <circle cx="80" cy="148" r="6" fill="#888"/>
+            <circle cx="160" cy="108" r="6" fill="#888"/>
+            <circle cx="240" cy="72" r="6" fill="#888"/>
+          </svg>
+          <div style="position:absolute;top:36%;left:45%;transform:translate(-50%,-50%)">
+            <div style="width:18px;height:18px;background:#ff3b30;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #fff;"></div>
+          </div>
+          <div class="map-label" style="top:16%;left:36%;background:#ff3b30;color:#fff">Pinned</div>
+        </div>
+        <div class="page-content" style="padding:14px 16px 0">
+          <div style="font-size:13px;color:#888;margin-bottom:8px">Select a stage on the route:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <div class="chip" onclick="selectStage(this,'Muthaiga Stage')">Muthaiga Stage</div>
+            <div class="chip active" onclick="selectStage(this,'Githurai Stage')">Githurai Stage</div>
+            <div class="chip" onclick="selectStage(this,'Ruiru Stage')">Ruiru Stage</div>
+          </div>
+          <div style="background:#f0f5ff;border-radius:10px;padding:12px;margin-bottom:16px">
+            <div style="font-size:12px;color:#888">Pickup window</div>
+            <div style="font-size:15px;font-weight:700;color:#1a5cff">7:28 – 7:38 AM</div>
+            <div style="font-size:12px;color:#888;margin-top:2px">at Githurai Stage</div>
+          </div>
+          <button class="btn btn-primary" onclick="go('s-reserve-confirm')">Review &amp; Confirm →</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 14: RESERVE - CONFIRM ===== -->
+      <div class="screen" id="s-reserve-confirm">
+        <div class="app-header">
+          <button class="back-btn" onclick="go('s-reserve-pickup-loc')">←</button>
+          <span style="font-size:16px;font-weight:700">Confirm reservation</span>
+          <div></div>
+        </div>
+        <div class="page-content" style="padding:16px">
+          <div class="res-card">
+            <div class="res-id">Reservation summary</div>
+            <div class="res-title">CBD → Thika Town</div>
+            <div class="divider"></div>
+            <div class="res-row"><span class="res-key">Matatu</span><span class="res-val">KJA 001A</span></div>
+            <div class="res-row"><span class="res-key">Sacco</span><span class="res-val">Super Metro</span></div>
+            <div class="res-row"><span class="res-key">Date</span><span class="res-val">21 March 2025</span></div>
+            <div class="res-row"><span class="res-key">Departure</span><span class="res-val">7:30 AM</span></div>
+            <div class="res-row"><span class="res-key">Pickup at</span><span class="res-val">Githurai Stage</span></div>
+            <div class="res-row"><span class="res-key">Pickup window</span><span class="res-val">7:28 – 7:38 AM</span></div>
+            <div class="res-row"><span class="res-key">Seats</span><span class="res-val">2A, 3A</span></div>
+            <div class="divider"></div>
+            <div class="res-row"><span class="res-key" style="font-weight:700;color:#111">Total fare</span><span class="res-val" style="font-size:16px;color:#1a5cff">KSh 160</span></div>
+          </div>
+          <div class="alert-banner alert-blue" style="margin:0 0 16px">
+            <div style="font-size:12px">You'll be notified when the matatu starts its trip and again when it's approaching your pickup spot.</div>
+          </div>
+          <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('s-reserve-success')">Confirm Reservation ✓</button>
+          <button class="btn btn-secondary" onclick="go('s-reserve-seat-pick')">Edit seats</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 15: RESERVE - SUCCESS ===== -->
+      <div class="screen" id="s-reserve-success" style="padding:20px;justify-content:center">
+        <div style="text-align:center;padding:16px 0 24px">
+          <div style="width:72px;height:72px;background:#e6f6ee;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px">✓</div>
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:4px">Reservation confirmed!</div>
+          <div style="font-size:14px;color:#888">Save your reservation number</div>
+        </div>
+        <div class="res-card" style="margin-bottom:16px">
+          <div style="text-align:center;margin-bottom:12px">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">Reservation ID</div>
+            <div style="font-size:28px;font-weight:800;color:#1a5cff;letter-spacing:2px">#SMA-4721</div>
+          </div>
+          <div class="divider"></div>
+          <div class="res-row"><span class="res-key">Matatu</span><span class="res-val">KJA 001A · Super Metro</span></div>
+          <div class="res-row"><span class="res-key">Pickup</span><span class="res-val">Githurai Stage</span></div>
+          <div class="res-row"><span class="res-key">Window</span><span class="res-val">7:28 – 7:38 AM</span></div>
+          <div class="res-row"><span class="res-key">Seats</span><span class="res-val">2A, 3A (×2)</span></div>
+          <div class="res-row"><span class="res-key">Fare</span><span class="res-val" style="color:#1a5cff">KSh 160</span></div>
+        </div>
+        <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('s-home')">Back to home</button>
+        <button class="btn btn-secondary" onclick="go('s-my-trips')">View all trips</button>
+      </div>
+
+      <!-- ===== SCREEN 16: TRIP LIVE (On Board) ===== -->
+      <div class="screen" id="s-trip-live">
+        <div style="padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:12px;color:#888">En route to</div><div style="font-size:17px;font-weight:700;color:#111">Thika Town</div></div>
+          <span class="badge badge-green pulse">● Live</span>
+        </div>
+        <div class="map-placeholder" style="height:300px;flex-shrink:0">
+          <div class="map-road map-road-h" style="top:40%"></div>
+          <div class="map-road map-road-h" style="top:65%"></div>
+          <div class="map-road map-road-v" style="left:30%"></div>
+          <div class="map-road map-road-v" style="left:60%"></div>
+          <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 359 300">
+            <path d="M30 260 Q120 180 200 120 Q270 75 340 40" stroke="#1a5cff" stroke-width="3.5" fill="none"/>
+            <path d="M30 260 Q90 225 130 200" stroke="#1a5cff" stroke-width="3.5" fill="none" opacity=".3"/>
+            <circle cx="30" cy="260" r="5" fill="#888"/>
+            <circle cx="130" cy="200" r="5" fill="#888"/>
+            <circle cx="220" cy="118" r="5" fill="#888"/>
+            <circle cx="310" cy="55" r="5" fill="#888"/>
+            <text x="38" y="258" font-size="9" fill="#555">CBD</text>
+            <text x="138" y="198" font-size="9" fill="#555">Muthaiga</text>
+            <text x="228" y="116" font-size="9" fill="#555">Githurai</text>
+            <text x="315" y="53" font-size="9" fill="#555">Thika</text>
+          </svg>
+          <div style="position:absolute;top:48%;left:40%;width:18px;height:18px;background:#1a5cff;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center">
+            <div style="width:6px;height:6px;background:#fff;border-radius:50%"></div>
+          </div>
+          <div class="map-label" style="top:36%;left:43%;background:#1a5cff;color:#fff">You're here</div>
+        </div>
+        <div style="padding:12px 16px;display:flex;gap:10px;border-bottom:1px solid #f0f0f0">
+          <div style="flex:1;text-align:center"><div style="font-size:18px;font-weight:800;color:#111">24</div><div style="font-size:11px;color:#888">mins left</div></div>
+          <div style="width:1px;background:#f0f0f0"></div>
+          <div style="flex:1;text-align:center"><div style="font-size:18px;font-weight:800;color:#111">8.4</div><div style="font-size:11px;color:#888">km away</div></div>
+          <div style="width:1px;background:#f0f0f0"></div>
+          <div style="flex:1;text-align:center"><div style="font-size:18px;font-weight:800;color:#111">KSh80</div><div style="font-size:11px;color:#888">fare</div></div>
+        </div>
+        <div style="padding:12px 16px">
+          <div style="font-size:13px;font-weight:700;color:#111;margin-bottom:6px">Next stop: Githurai Stage</div>
+          <div style="height:4px;background:#f0f0f0;border-radius:2px;margin-bottom:12px"><div style="width:45%;height:100%;background:#1a5cff;border-radius:2px"></div></div>
+          <button class="btn btn-danger" onclick="go('s-trip-end')">End trip / I've arrived</button>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 17: TRIP END ===== -->
+      <div class="screen" id="s-trip-end" style="padding:20px;justify-content:center">
+        <div style="text-align:center;padding:16px 0 20px">
+          <div style="width:72px;height:72px;background:#e6f6ee;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px">🏁</div>
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:4px">You've arrived!</div>
+          <div style="font-size:14px;color:#888">Thika Town · 7:52 AM</div>
+        </div>
+        <div style="background:#f8f8f8;border-radius:14px;padding:16px;margin-bottom:16px">
+          <div class="res-row"><span class="res-key">Route</span><span class="res-val">CBD → Thika</span></div>
+          <div class="res-row"><span class="res-key">Duration</span><span class="res-val">22 min</span></div>
+          <div class="res-row"><span class="res-key">Matatu</span><span class="res-val">KJA 001A</span></div>
+          <div class="res-row"><span class="res-key">Fare paid</span><span class="res-val">KSh 80</span></div>
+        </div>
+        <button class="btn btn-primary" style="margin-bottom:10px" onclick="go('s-home')">Back to home</button>
+        <button class="btn btn-secondary" onclick="go('s-home')">Rate this trip</button>
+      </div>
+
+      <!-- ===== SCREEN 18: MY TRIPS ===== -->
+      <div class="screen" id="s-my-trips">
+        <div style="padding:16px 20px 8px">
+          <div style="font-size:20px;font-weight:700;color:#111;margin-bottom:4px">My trips</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div class="chip active">All</div>
+            <div class="chip">Active</div>
+            <div class="chip">Upcoming</div>
+            <div class="chip">Past</div>
+          </div>
+        </div>
+        <div class="page-content" style="padding:0 16px">
+          <!-- Upcoming -->
+          <div style="font-size:12px;font-weight:700;color:#aaa;margin:8px 0 6px;text-transform:uppercase">Upcoming</div>
+          <div style="border:1.5px solid #dce6ff;background:#f7f9ff;border-radius:14px;padding:14px;margin-bottom:10px" onclick="go('s-reserve-success')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div><div style="font-size:15px;font-weight:700;color:#111">CBD → Thika Town</div><div style="font-size:12px;color:#888">21 Mar · 7:30 AM</div></div>
+              <span class="badge badge-blue">#SMA-4721</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:13px;color:#888">KJA 001A · 2 seats</span>
+              <span style="font-size:13px;font-weight:700;color:#1a5cff">KSh 160</span>
+            </div>
+          </div>
+          <!-- Past -->
+          <div style="font-size:12px;font-weight:700;color:#aaa;margin:8px 0 6px;text-transform:uppercase">Past trips</div>
+          <div style="border:1px solid #f0f0f0;border-radius:14px;padding:14px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div><div style="font-size:15px;font-weight:700;color:#111">CBD → Thika Town</div><div style="font-size:12px;color:#888">18 Mar · 8:15 AM</div></div>
+              <span class="badge badge-green">Completed</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:13px;color:#888">KBZ 445K</span>
+              <span style="font-size:13px;font-weight:700;color:#111">KSh 80</span>
+            </div>
+          </div>
+          <div style="border:1px solid #f0f0f0;border-radius:14px;padding:14px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div><div style="font-size:15px;font-weight:700;color:#111">Westlands → CBD</div><div style="font-size:12px;color:#888">17 Mar · 7:45 AM</div></div>
+              <span class="badge badge-green">Completed</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:13px;color:#888">KDA 223B</span>
+              <span style="font-size:13px;font-weight:700;color:#111">KSh 50</span>
+            </div>
+          </div>
+          <div style="border:1px solid #f0f0f0;border-radius:14px;padding:14px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div><div style="font-size:15px;font-weight:700;color:#111">CBD → Githurai</div><div style="font-size:12px;color:#888">14 Mar · 6:50 AM</div></div>
+              <span class="badge badge-red">No-show</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:13px;color:#888">KJA 001A</span>
+              <span style="font-size:13px;font-weight:700;color:#111">KSh 0</span>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="go('s-home')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#bbb"/></svg></div><span class="nav-label">Home</span></div>
+          <div class="nav-item" onclick="go('s-search')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9" cy="9" r="6" stroke="#bbb" stroke-width="2"/><path d="M14 14l5 5" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Search</span></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#1a5cff" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#1a5cff" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label" style="color:#1a5cff">Trips</span></div>
+          <div class="nav-item" onclick="go('s-profile')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#bbb" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Profile</span></div>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN 19: PROFILE ===== -->
+      <div class="screen" id="s-profile">
+        <div style="padding:24px 20px 16px;text-align:center">
+          <div style="width:72px;height:72px;border-radius:50%;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a5cff;font-size:22px;margin:0 auto 10px">AW</div>
+          <div style="font-size:18px;font-weight:700;color:#111">Amina Wanjiru</div>
+          <div style="font-size:13px;color:#888">+254 712 345 678</div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+            <span class="badge badge-blue">Verified ✓</span>
+            <span class="badge badge-green">18 trips</span>
+          </div>
+        </div>
+        <div class="page-content" style="padding:0 16px">
+          <div style="background:#f8f8f8;border-radius:14px;overflow:hidden;margin-bottom:16px">
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0;cursor:pointer"><span style="font-size:14px;font-weight:600;color:#111">Personal info</span><span style="color:#ccc">›</span></div>
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0;cursor:pointer"><span style="font-size:14px;font-weight:600;color:#111">Notifications</span><span style="color:#ccc">›</span></div>
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0;cursor:pointer"><span style="font-size:14px;font-weight:600;color:#111">Saved places</span><span style="color:#ccc">›</span></div>
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;cursor:pointer"><span style="font-size:14px;font-weight:600;color:#111">Help &amp; support</span><span style="color:#ccc">›</span></div>
+          </div>
+          <button class="btn btn-secondary" style="margin-bottom:12px">Sign out</button>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="go('s-home')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 9.5L11 3l8 6.5V19a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" fill="#bbb"/></svg></div><span class="nav-label">Home</span></div>
+          <div class="nav-item" onclick="go('s-search')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9" cy="9" r="6" stroke="#bbb" stroke-width="2"/><path d="M14 14l5 5" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Search</span></div>
+          <div class="nav-item" onclick="go('s-my-trips')"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#bbb" stroke-width="2"/><path d="M7 3v4M15 3v4M3 11h16" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label">Trips</span></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="#1a5cff" stroke-width="2"/><path d="M3 19c0-4 3.6-6 8-6s8 2 8 6" stroke="#1a5cff" stroke-width="2" stroke-linecap="round"/></svg></div><span class="nav-label" style="color:#1a5cff">Profile</span></div>
+        </div>
+      </div>
+
+      <!-- TOAST -->
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+
+  <!-- JOURNEY PANEL -->
+  <div class="journey-panel">
+    <h3>Sema — Rider Journeys</h3>
+    <p>Tap any journey to jump to that screen</p>
+    <div class="journey-list">
+      <div class="journey-group">Onboarding</div>
+      <button class="journey-btn active" id="jbtn-s-splash" onclick="jumpTo('s-splash',this)">Splash / Landing</button>
+      <button class="journey-btn" id="jbtn-s-register" onclick="jumpTo('s-register',this)">Registration form</button>
+      <button class="journey-btn" id="jbtn-s-otp" onclick="jumpTo('s-otp',this)">OTP verification</button>
+      <button class="journey-btn" id="jbtn-s-home" onclick="jumpTo('s-home',this)">Home dashboard</button>
+      <div class="journey-group">Route discovery</div>
+      <button class="journey-btn" id="jbtn-s-search" onclick="jumpTo('s-search',this)">Search &amp; route list</button>
+      <button class="journey-btn" id="jbtn-s-matatu-detail" onclick="jumpTo('s-matatu-detail',this)">Matatu detail</button>
+      <div class="journey-group">Spontaneous flag</div>
+      <button class="journey-btn" id="jbtn-s-flag-active" onclick="jumpTo('s-flag-active',this)">Waiting (proximity alerts)</button>
+      <button class="journey-btn" id="jbtn-s-flag-boarding" onclick="jumpTo('s-flag-boarding',this)">Driver accepted — board</button>
+      <div class="journey-group">Preferred pickup spot</div>
+      <button class="journey-btn" id="jbtn-s-pickup-spot" onclick="jumpTo('s-pickup-spot',this)">Set pickup spot</button>
+      <button class="journey-btn" id="jbtn-s-pickup-waiting" onclick="jumpTo('s-pickup-waiting',this)">Monitoring / alerts</button>
+      <div class="journey-group">Seat reservation</div>
+      <button class="journey-btn" id="jbtn-s-reserve-time" onclick="jumpTo('s-reserve-time',this)">Pick time &amp; seats</button>
+      <button class="journey-btn" id="jbtn-s-reserve-matatu" onclick="jumpTo('s-reserve-matatu',this)">Choose matatu</button>
+      <button class="journey-btn" id="jbtn-s-reserve-seat-pick" onclick="jumpTo('s-reserve-seat-pick',this)">Seat picker</button>
+      <button class="journey-btn" id="jbtn-s-reserve-pickup-loc" onclick="jumpTo('s-reserve-pickup-loc',this)">Set pickup location</button>
+      <button class="journey-btn" id="jbtn-s-reserve-confirm" onclick="jumpTo('s-reserve-confirm',this)">Confirm reservation</button>
+      <button class="journey-btn" id="jbtn-s-reserve-success" onclick="jumpTo('s-reserve-success',this)">Reservation success</button>
+      <div class="journey-group">Live trip</div>
+      <button class="journey-btn" id="jbtn-s-trip-live" onclick="jumpTo('s-trip-live',this)">Live trip tracking</button>
+      <button class="journey-btn" id="jbtn-s-trip-end" onclick="jumpTo('s-trip-end',this)">Trip ended</button>
+      <div class="journey-group">Account</div>
+      <button class="journey-btn" id="jbtn-s-my-trips" onclick="jumpTo('s-my-trips',this)">My trips</button>
+      <button class="journey-btn" id="jbtn-s-profile" onclick="jumpTo('s-profile',this)">Profile</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let current='s-splash';
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const s=document.getElementById(id);
+  if(s){s.classList.add('active');s.scrollTop=0;}
+  current=id;
+  document.querySelectorAll('.journey-btn').forEach(b=>b.classList.remove('active'));
+  const jb=document.getElementById('jbtn-'+id);
+  if(jb)jb.classList.add('active');
+}
+function jumpTo(id,btn){
+  go(id);
+}
+function goRoute(r){go('s-search');}
+function selectMatatu(el){
+  document.querySelectorAll('.matatu-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function selectStage(el,name){
+  el.closest('.screen').querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const sp=el.closest('.screen').querySelector('#selected-stage');
+  if(sp)sp.textContent=name;
+}
+function selectTime(el){
+  el.closest('#time-grid').querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+let seats=1;
+function adjSeats(d){
+  seats=Math.max(1,Math.min(3,seats+d));
+  document.getElementById('seat-count').textContent=seats;
+}
+function toggleSeat(el){
+  if(el.classList.contains('taken'))return;
+  el.classList.toggle('selected-seat');
+  el.classList.toggle('avail');
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>

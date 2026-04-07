@@ -1,0 +1,53 @@
+/* driver.css */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f5f0;
+  min-height: 100vh;
+  color: #111;
+}
+
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* ── Login ── */
+#screen-login.active {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 24px;
+  background: #0d7a3e;
+}
+.login-icon { width: 72px; height: 72px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+.login-title { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -1px; margin-bottom: 4px; }
+.login-tagline { font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 6px; }
+.login-sub { font-size: 11px; background: rgba(255,255,255,0.15); color: #fff; padding: 3px 10px; border-radius: 20px; margin-bottom: 36px; }
+.login-form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+.login-input { width: 100%; padding: 14px 16px; border: none; border-radius: 12px; font-size: 16px; font-family: inherit; outline: none; }
+.login-btn { width: 100%; padding: 14px; background: #fff; color: #0d7a3e; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.login-error { font-size: 13px; color: #ffcccc; min-height: 18px; }
+
+/* ── Home ── */
+#screen-home { background: #f5f5f0; padding-bottom: 80px; }
+.home-header { padding: 16px 20px 12px; background: #fff; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+.home-greeting-sub { font-size: 13px; color: #888; }
+.home-greeting-name { font-size: 20px; font-weight: 700; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: #e6f6ee; color: #0d7a3e; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.home-content { padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+.start-trip-btn { width: 100%; padding: 18px; background: #0d7a3e; color: #fff; border: none; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; }
+
+/* ── Bottom Nav ── */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; padding: 8px 0 12px; z-index: 100; }
+.nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; border: none; background: none; position: relative; }
+.nav-tab-icon { width: 22px; height: 22px; border-radius: 4px; background: #f2f2f2; display: flex; align-items: center; justify-content: center; }
+.nav-tab-icon .dot { width: 10px; height: 10px; border-radius: 2px; background: #bbb; }
+.nav-tab-label { font-size: 10px; color: #888; font-weight: 400; }
+.nav-tab.active .nav-tab-icon { background: #e6f6ee; }
+.nav-tab.active .nav-tab-icon .dot { background: #0d7a3e; }
+.nav-tab.active .nav-tab-label { color: #0d7a3e; font-weight: 600; }
+.nav-badge { position: absolute; top: -2px; right: calc(50% - 14px); width: 8px; height: 8px; border-radius: 50%; background: #0d7a3e; border: 1.5px solid #fff; }
+
+/* ── Generic ── */
+.screen-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #fff; border-bottom: 1px solid #f0f0f0; }
+.back-btn { width: 32px; height: 32px; border-radius: 50%; background: #f2f2f2; border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.screen-title { font-size: 16px; font-weight: 700; }
+.placeholder { padding: 40px 20px; text-align: center; color: #888; font-size: 14px; }

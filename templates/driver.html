@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sema — Driver</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <link rel="stylesheet" href="/static/css/driver.css" />
+  <script src="/static/js/logging.js"></script>
+  <script>
+    const MAPBOX_TOKEN = "{{ mapbox_token }}";
+  </script>
+</head>
+<body>
+
+  <div id="screen-login" class="screen"></div>
+  <div id="screen-home" class="screen"></div>
+  <div id="screen-start-trip" class="screen"></div>
+  <div id="screen-reject-rider" class="screen"></div>
+  <div id="screen-active-trip" class="screen"></div>
+  <div id="screen-paused-trip" class="screen"></div>
+  <div id="screen-cluster-view" class="screen"></div>
+  <div id="screen-end-summary" class="screen"></div>
+  <div id="screen-history" class="screen"></div>
+  <div id="screen-profile" class="screen"></div>
+
+  <script src="/static/js/driver.js"></script>
+</body>
+</html>

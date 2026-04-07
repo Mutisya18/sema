@@ -1,0 +1,631 @@
+import { useState } from "react";
+
+const RIDER = "#1a5cff";
+const DRIVER = "#0d7a3e";
+const RIDER_LIGHT = "#e8f0ff";
+const DRIVER_LIGHT = "#e6f6ee";
+const RIDER_MID = "#c0d0ff";
+const DRIVER_MID = "#c0e8d0";
+
+const tabs = ["Colours","Typography","Buttons","Inputs","Badges & Chips","Cards","Banners","Navigation","Toasts & Feedback"];
+
+const Section = ({title, children}) => (
+  <div style={{marginBottom:40}}>
+    <p style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:"#888",marginBottom:16}}>{title}</p>
+    {children}
+  </div>
+);
+
+const Label = ({children}) => (
+  <p style={{fontSize:11,color:"#aaa",marginBottom:6,marginTop:0}}>{children}</p>
+);
+
+export default function App() {
+  const [tab, setTab] = useState(0);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("default");
+
+  const showToast = (msg, type="default") => {
+    setToastMsg(msg); setToastType(type); setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 2500);
+  };
+
+  const toastBg = {default:"#111", success:"#0d7a3e", warning:"#d06000", error:"#ff3b30"};
+
+  return (
+    <div style={{fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",background:"#f5f5f0",minHeight:"100vh",padding:0}}>
+      {/* Header */}
+      <div style={{background:"#fff",borderBottom:"1px solid #eee",padding:"16px 24px",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:32,height:32,borderRadius:8,background:RIDER,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="6" width="16" height="9" rx="2" fill="#fff" opacity=".9"/><rect x="4" y="8" width="5" height="4" rx="1" fill={RIDER} opacity=".8"/><rect x="11" y="8" width="5" height="4" rx="1" fill={RIDER} opacity=".8"/><circle cx="5" cy="16" r="2" fill={RIDER} stroke="#fff" strokeWidth="1.2"/><circle cx="15" cy="16" r="2" fill={RIDER} stroke="#fff" strokeWidth="1.2"/></svg>
+        </div>
+        <div>
+          <p style={{margin:0,fontWeight:700,fontSize:16,color:"#111"}}>Sema Design System</p>
+          <p style={{margin:0,fontSize:11,color:"#888"}}>Components · Tokens · Patterns</p>
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+          <span style={{fontSize:11,fontWeight:600,padding:"3px 8px",borderRadius:20,background:RIDER_LIGHT,color:RIDER}}>Rider</span>
+          <span style={{fontSize:11,fontWeight:600,padding:"3px 8px",borderRadius:20,background:DRIVER_LIGHT,color:DRIVER}}>Driver</span>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{background:"#fff",borderBottom:"1px solid #eee",padding:"0 24px",display:"flex",gap:0,overflowX:"auto"}}>
+        {tabs.map((t,i) => (
+          <button key={i} onClick={()=>setTab(i)} style={{padding:"12px 14px",border:"none",background:"none",cursor:"pointer",fontSize:13,fontWeight:tab===i?600:400,color:tab===i?"#111":"#888",borderBottom:tab===i?"2px solid #111":"2px solid transparent",whiteSpace:"nowrap",transition:"color .15s"}}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{padding:24,maxWidth:800,margin:"0 auto"}}>
+
+        {/* COLOURS */}
+        {tab===0 && (
+          <div>
+            <Section title="Role themes">
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #f0f0f0",overflow:"hidden"}}>
+                  <div style={{background:RIDER,padding:"20px 16px"}}>
+                    <p style={{margin:0,color:"#fff",fontSize:13,opacity:.7}}>Rider theme</p>
+                    <p style={{margin:0,color:"#fff",fontSize:22,fontWeight:700}}>Blue</p>
+                  </div>
+                  <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
+                    {[["Primary",RIDER,"#fff"],["Light bg",RIDER_LIGHT,RIDER],["Mid / border",RIDER_MID,RIDER]].map(([n,bg,fg])=>(
+                      <div key={n} style={{display:"flex",alignItems:"center",gap:10}}>
+                        <div style={{width:32,height:32,borderRadius:8,background:bg,border:"1px solid #eee",flexShrink:0}}/>
+                        <div>
+                          <p style={{margin:0,fontSize:12,fontWeight:600,color:"#111"}}>{n}</p>
+                          <p style={{margin:0,fontSize:11,color:"#888"}}>{bg}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #f0f0f0",overflow:"hidden"}}>
+                  <div style={{background:DRIVER,padding:"20px 16px"}}>
+                    <p style={{margin:0,color:"#fff",fontSize:13,opacity:.7}}>Driver theme</p>
+                    <p style={{margin:0,color:"#fff",fontSize:22,fontWeight:700}}>Green</p>
+                  </div>
+                  <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
+                    {[["Primary",DRIVER,"#fff"],["Light bg",DRIVER_LIGHT,DRIVER],["Mid / border",DRIVER_MID,DRIVER]].map(([n,bg,fg])=>(
+                      <div key={n} style={{display:"flex",alignItems:"center",gap:10}}>
+                        <div key={n} style={{width:32,height:32,borderRadius:8,background:bg,border:"1px solid #eee",flexShrink:0}}/>
+                        <div>
+                          <p style={{margin:0,fontSize:12,fontWeight:600,color:"#111"}}>{n}</p>
+                          <p style={{margin:0,fontSize:11,color:"#888"}}>{bg}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Neutrals & surfaces">
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+                {[["Background","#ffffff"],["Surface","#f8f8f8"],["Border","#f0f0f0"],["Divider","#e8e8e8"],["Text primary","#111111"],["Text secondary","#888888"],["Text hint","#aaaaaa"],["Overlay","rgba(0,0,0,0.4)"]].map(([n,c])=>(
+                  <div key={n}>
+                    <div style={{height:40,borderRadius:8,background:c,border:"1px solid #eee",marginBottom:4}}/>
+                    <p style={{margin:0,fontSize:11,fontWeight:600,color:"#111"}}>{n}</p>
+                    <p style={{margin:0,fontSize:10,color:"#aaa"}}>{c}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Semantic colours">
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+                {[["Success","#0a7a3e","#e6f6ee"],["Warning","#d06000","#fff3e0"],["Error","#d00000","#ffe8e8"],["Info","#1a5cff","#e8f0ff"]].map(([n,fg,bg])=>(
+                  <div key={n}>
+                    <div style={{height:40,borderRadius:8,background:bg,border:`1px solid ${fg}30`,marginBottom:4,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <span style={{fontSize:11,fontWeight:700,color:fg}}>{n}</span>
+                    </div>
+                    <p style={{margin:0,fontSize:10,color:"#aaa"}}>{bg}</p>
+                    <p style={{margin:0,fontSize:10,color:"#aaa"}}>{fg}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* TYPOGRAPHY */}
+        {tab===1 && (
+          <div>
+            <Section title="Typeface">
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #f0f0f0",padding:20}}>
+                <p style={{margin:"0 0 4px",fontSize:13,color:"#888"}}>Primary font</p>
+                <p style={{margin:"0 0 16px",fontSize:20,fontWeight:700,color:"#111"}}>-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif</p>
+                <p style={{margin:0,fontSize:12,color:"#aaa"}}>System font stack — renders as SF Pro on iOS/macOS, Segoe UI on Windows. No external font load required.</p>
+              </div>
+            </Section>
+
+            <Section title="Scale">
+              {[
+                ["Screen title","20px","700","#111","Page headers — Home, My Trips, Profile"],
+                ["Section title","18px","700","#111","Card headers, modal titles"],
+                ["Body large","16px","600","#111","Primary content, plate numbers, names"],
+                ["Body","14px","400","#111","General content, card body text"],
+                ["Body small","13px","400","#888","Supporting text, subtitles"],
+                ["Label","12px","400","#888","Field labels, section openers"],
+                ["Caption","11px","700","#aaa","Uppercase tags, stat labels — use sparingly"],
+                ["Micro","10px","400","#aaa","Map labels, nav labels"],
+              ].map(([name,size,weight,color,note])=>(
+                <div key={name} style={{display:"flex",alignItems:"baseline",gap:16,padding:"10px 0",borderBottom:"1px solid #f5f5f5"}}>
+                  <div style={{width:120,flexShrink:0}}>
+                    <p style={{margin:0,fontSize:size,fontWeight:weight,color}}>{name}</p>
+                  </div>
+                  <div style={{display:"flex",gap:16,flex:1}}>
+                    <span style={{fontSize:11,color:"#aaa",minWidth:32}}>{size}</span>
+                    <span style={{fontSize:11,color:"#aaa",minWidth:24}}>{weight}</span>
+                    <span style={{fontSize:11,color:"#aaa"}}>{note}</span>
+                  </div>
+                </div>
+              ))}
+            </Section>
+
+            <Section title="Usage rules">
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {["Plate numbers and fares use Body large (16px/700) — these are the primary decision data.","Driver and rider names use Body large (14px/600).","All route names, stop names, and sacco names use Body (14px/400).","Timestamps and supporting metadata use Body small (13px / #888).","Section group labels (UPCOMING, PAST TRIPS) use Caption (11px/700/uppercase/#aaa).",].map((r,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"10px 12px",background:"#f8f8f8",borderRadius:8}}>
+                    <span style={{fontSize:13,color:RIDER,fontWeight:700,flexShrink:0}}>→</span>
+                    <p style={{margin:0,fontSize:13,color:"#555"}}>{r}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* BUTTONS */}
+        {tab===2 && (
+          <div>
+            <Section title="Rider buttons">
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <Label>Primary — main actions</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:"none",background:RIDER,color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}}>Find a matatu</button>
+
+                <Label>Secondary — supporting actions</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"#f2f2f2",color:"#333",fontSize:15,fontWeight:600,cursor:"pointer"}}>Cancel request</button>
+
+                <Label>Outline — alternative / equal-weight actions</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:`1.5px solid ${RIDER}`,background:"#fff",color:RIDER,fontSize:15,fontWeight:600,cursor:"pointer"}}>Set pickup spot</button>
+
+                <Label>Danger — destructive or exit actions</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"#ff3b30",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}}>Not my matatu</button>
+
+                <Label>Disabled state</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"#f2f2f2",color:"#bbb",fontSize:15,fontWeight:600,cursor:"not-allowed"}}>Confirm Booking ✓</button>
+
+                <Label>Confirmed / signalled state (one-time action)</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:"none",background:RIDER_LIGHT,color:RIDER,fontSize:15,fontWeight:600,cursor:"default"}}>Signalled ✓</button>
+              </div>
+            </Section>
+
+            <Section title="Driver buttons">
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <Label>Primary</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:"none",background:DRIVER,color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}}>Begin trip 🚍</button>
+
+                <Label>Outline</Label>
+                <button style={{width:"100%",padding:14,borderRadius:12,border:`1.5px solid ${DRIVER}`,background:"#fff",color:DRIVER,fontSize:15,fontWeight:600,cursor:"pointer"}}>Resume availability</button>
+
+                <Label>Inline action pair (accept / reject)</Label>
+                <div style={{display:"flex",gap:8}}>
+                  <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:DRIVER_LIGHT,color:DRIVER,fontSize:13,fontWeight:700,cursor:"pointer"}}>Accept</button>
+                  <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"#ffe8e8",color:"#c00",fontSize:13,fontWeight:700,cursor:"pointer"}}>Reject</button>
+                </div>
+
+                <Label>Small action buttons</Label>
+                <div style={{display:"flex",gap:8}}>
+                  <button style={{padding:"8px 16px",borderRadius:8,border:"none",background:"#f2f2f2",color:"#333",fontSize:13,fontWeight:600,cursor:"pointer"}}>Pause trip</button>
+                  <button style={{padding:"8px 16px",borderRadius:8,border:"none",background:"#ff3b30",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>End trip</button>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Rules">
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {["Full-width buttons have 14px vertical padding and 12px border radius.","Small / inline buttons have 8px vertical padding and 8px border radius.","One primary button per screen maximum.","Danger buttons require a confirmation step before executing.","Disabled buttons use #f2f2f2 background and #bbb text — no opacity trick.","One-way actions (Pick Me Up, Signalled) use light role colour fill after tap."].map((r,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"8px 12px",background:"#f8f8f8",borderRadius:8}}>
+                    <span style={{fontSize:13,color:RIDER,fontWeight:700,flexShrink:0}}>→</span>
+                    <p style={{margin:0,fontSize:13,color:"#555"}}>{r}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* INPUTS */}
+        {tab===3 && (
+          <div>
+            <Section title="Text inputs">
+              <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                <div>
+                  <Label>Default</Label>
+                  <input style={{width:"100%",padding:"12px 14px",border:"1.5px solid #e0e0e0",borderRadius:10,fontSize:15,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}} placeholder="Where are you going?" />
+                </div>
+                <div>
+                  <Label>With icon prefix — search</Label>
+                  <div style={{position:"relative"}}>
+                    <svg style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)"}} width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="#888" strokeWidth="1.5"/><path d="M10 10L14 14" stroke="#888" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    <input style={{width:"100%",padding:"12px 14px 12px 38px",border:"1.5px solid #e0e0e0",borderRadius:10,fontSize:15,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}} placeholder="Where to?" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Locked / pre-filled (flagging from location)</Label>
+                  <input style={{width:"100%",padding:"12px 14px",border:"1.5px solid #e0e0e0",borderRadius:10,fontSize:15,outline:"none",fontFamily:"inherit",background:"#f8f8f8",color:"#888",boxSizing:"border-box"}} value="CBD (auto)" readOnly />
+                </div>
+                <div>
+                  <Label>Dual input — from / to stack</Label>
+                  <div style={{border:"1.5px solid #e0e0e0",borderRadius:12,overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid #f0f0f0",gap:10}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:RIDER,flexShrink:0}}/>
+                      <input style={{border:"none",outline:"none",fontSize:14,fontFamily:"inherit",flex:1,background:"transparent"}} placeholder="From where?" />
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:10}}>
+                      <div style={{width:8,height:8,borderRadius:2,background:"#111",flexShrink:0}}/>
+                      <input style={{border:"none",outline:"none",fontSize:14,fontFamily:"inherit",flex:1,background:"transparent"}} placeholder="Where to?" />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <Label>With error state</Label>
+                  <input style={{width:"100%",padding:"12px 14px",border:"1.5px solid #ff3b30",borderRadius:10,fontSize:15,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}} placeholder="Phone number" />
+                  <p style={{margin:"6px 0 0",fontSize:12,color:"#d00"}}>Phone number not found</p>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Steppers">
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <Label>Seat count stepper (booking)</Label>
+                <div style={{display:"flex",alignItems:"center",gap:16}}>
+                  <button style={{width:40,height:40,borderRadius:8,border:"1.5px solid #e0e0e0",background:"#f8f8f8",fontSize:20,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#333"}}>−</button>
+                  <span style={{fontSize:20,fontWeight:800,color:"#111",minWidth:24,textAlign:"center"}}>2</span>
+                  <button style={{width:40,height:40,borderRadius:8,border:"1.5px solid #e0e0e0",background:"#f8f8f8",fontSize:20,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#333"}}>+</button>
+                  <span style={{fontSize:12,color:"#aaa"}}>seats (1–30)</span>
+                </div>
+                <Label>Fare input (driver)</Label>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:14,color:"#888"}}>KSh</span>
+                  <input style={{width:80,padding:"10px 12px",border:"1.5px solid #e0e0e0",borderRadius:10,fontSize:18,fontWeight:700,textAlign:"center",outline:"none",fontFamily:"inherit"}} defaultValue="80" />
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Filter chips / selectors">
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {["All","Super Metro","OMA","Nearby"].map((c,i)=>(
+                  <div key={c} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${i===0?RIDER:"#e0e0e0"}`,fontSize:13,cursor:"pointer",background:i===0?RIDER_LIGHT:"#fff",color:i===0?RIDER:"#444",fontWeight:i===0?600:400}}>
+                    {c}
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+                {["CBD","Muthaiga Stage","Githurai Stage","Ruiru Stage","Thika Town"].map((c,i)=>(
+                  <div key={c} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${i===1?DRIVER:"#e0e0e0"}`,fontSize:13,cursor:"pointer",background:i===1?DRIVER_LIGHT:"#fff",color:i===1?DRIVER:"#444",fontWeight:i===1?600:400}}>
+                    {c}
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* BADGES & CHIPS */}
+        {tab===4 && (
+          <div>
+            <Section title="Status badges">
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {[["Active","#e6f6ee","#0a7a3e"],["Pending","#fff3e0","#d06000"],["Completed","#e6f6ee","#0a7a3e"],["Cancelled","#f2f2f2","#666"],["No-show","#ffe8e8","#d00"],["Rejected","#ffe8e8","#d00"],["Flagging","#fff3e0","#d06000"],["Booking ★","#e8f0ff","#1a5cff"],["Spotted ✓","#e6f6ee","#0a7a3e"],["Live","#e6f6ee","#0a7a3e"],["Paused","#fff3e0","#d06000"]].map(([l,bg,fg])=>(
+                  <span key={l} style={{padding:"3px 10px",borderRadius:20,background:bg,color:fg,fontSize:11,fontWeight:700}}>{l}</span>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Seat count badges">
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#e6f6ee",color:"#0a7a3e",fontSize:11,fontWeight:700}}>12 seats</span>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#fff3e0",color:"#d06000",fontSize:11,fontWeight:700}}>3 seats</span>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#ffe8e8",color:"#d00",fontSize:11,fontWeight:700}}>1 seat</span>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#f2f2f2",color:"#888",fontSize:11,fontWeight:700}}>Full</span>
+              </div>
+              <p style={{marginTop:8,fontSize:12,color:"#aaa"}}>Green ≥ 6 seats · Orange 2–5 seats · Red 1 seat · Grey full</p>
+            </Section>
+
+            <Section title="Info tags">
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#e6f6ee",color:"#0a7a3e",fontSize:11,fontWeight:700}}>Verified ✓</span>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#f2f2f2",color:"#666",fontSize:11,fontWeight:700}}>KJA 001A</span>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#f2f2f2",color:"#666",fontSize:11,fontWeight:700}}>Super Metro</span>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#e8f0ff",color:"#1a5cff",fontSize:11,fontWeight:700}}>#SMA-4721</span>
+                <span style={{padding:"3px 10px",borderRadius:20,background:"#e8f0ff",color:"#1a5cff",fontSize:11,fontWeight:700}}>2 seats</span>
+              </div>
+            </Section>
+
+            <Section title="Rules">
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {["All badges: 11px/700, 3px vertical padding, 10px horizontal, 20px radius.","Colour always carries meaning — never decorative. Use the semantic table above.","One badge per card header maximum. Two only if types differ (e.g. status + seat count).","Pulsing animation (opacity 1→0.4 loop) used only on Live and ● dot indicators."].map((r,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"8px 12px",background:"#f8f8f8",borderRadius:8}}>
+                    <span style={{fontSize:13,color:RIDER,fontWeight:700,flexShrink:0}}>→</span>
+                    <p style={{margin:0,fontSize:13,color:"#555"}}>{r}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* CARDS */}
+        {tab===5 && (
+          <div>
+            <Section title="TripCard — matatu listing">
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <Label>Default</Label>
+                <div style={{border:"1.5px solid #f0f0f0",borderRadius:14,padding:14,background:"#fff"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div><p style={{margin:0,fontSize:16,fontWeight:700,color:"#111"}}>KJA 001A</p><p style={{margin:0,fontSize:12,color:"#888"}}>Super Metro</p></div>
+                    <span style={{padding:"3px 10px",borderRadius:20,background:"#e6f6ee",color:"#0a7a3e",fontSize:11,fontWeight:700}}>8 seats</span>
+                  </div>
+                  <div style={{display:"flex",gap:16}}>
+                    {[["2 min","ETA to stop"],["KSh 80","Fare"]].map(([v,l])=>(
+                      <div key={l}><p style={{margin:0,fontSize:14,fontWeight:600,color:"#111"}}>{v}</p><p style={{margin:0,fontSize:10,color:"#aaa"}}>{l}</p></div>
+                    ))}
+                  </div>
+                </div>
+
+                <Label>Selected</Label>
+                <div style={{border:`1.5px solid ${RIDER}`,borderRadius:14,padding:14,background:"#f7f9ff"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div><p style={{margin:0,fontSize:16,fontWeight:700,color:"#111"}}>KJA 001A</p><p style={{margin:0,fontSize:12,color:"#888"}}>Super Metro</p></div>
+                    <span style={{padding:"3px 10px",borderRadius:20,background:"#e6f6ee",color:"#0a7a3e",fontSize:11,fontWeight:700}}>8 seats</span>
+                  </div>
+                  <div style={{display:"flex",gap:16}}>
+                    {[["2 min","ETA to stop"],["KSh 80","Fare"]].map(([v,l])=>(
+                      <div key={l}><p style={{margin:0,fontSize:14,fontWeight:600,color:"#111"}}>{v}</p><p style={{margin:0,fontSize:10,color:"#aaa"}}>{l}</p></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="RiderCard — driver feed">
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <Label>Flagging — pending</Label>
+                <div style={{border:"1.5px solid #f0f0f0",borderRadius:12,padding:14,background:"#fff"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div><p style={{margin:0,fontSize:14,fontWeight:700,color:"#111"}}>Brian Otieno</p><p style={{margin:0,fontSize:12,color:"#888"}}>→ Githurai · 0.4 km away</p></div>
+                    <span style={{padding:"3px 10px",borderRadius:20,background:"#fff3e0",color:"#d06000",fontSize:11,fontWeight:700}}>Flagging</span>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:DRIVER_LIGHT,color:DRIVER,fontSize:13,fontWeight:700,cursor:"pointer"}}>Accept</button>
+                    <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"#ffe8e8",color:"#c00",fontSize:13,fontWeight:700,cursor:"pointer"}}>Reject</button>
+                  </div>
+                </div>
+
+                <Label>Booking — pending</Label>
+                <div style={{border:`1.5px solid ${RIDER_MID}`,borderRadius:12,padding:14,background:"#f7f9ff"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                    <div><p style={{margin:0,fontSize:14,fontWeight:700,color:"#111"}}>Amina Wanjiru</p><p style={{margin:0,fontSize:12,color:"#888"}}>→ Thika Town · Githurai Stage</p></div>
+                    <span style={{padding:"3px 10px",borderRadius:20,background:"#e8f0ff",color:RIDER,fontSize:11,fontWeight:700}}>Booking ★</span>
+                  </div>
+                  <p style={{margin:"0 0 10px",fontSize:12,color:"#888"}}>Window: 7:28–7:38 AM · 2 seats</p>
+                  <div style={{display:"flex",gap:8}}>
+                    <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:DRIVER_LIGHT,color:DRIVER,fontSize:13,fontWeight:700,cursor:"pointer"}}>Accept</button>
+                    <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"#ffe8e8",color:"#c00",fontSize:13,fontWeight:700,cursor:"pointer"}}>Reject</button>
+                  </div>
+                </div>
+
+                <Label>Spotted — tapped Pick Me Up (any type)</Label>
+                <div style={{border:`1.5px solid ${DRIVER}`,borderRadius:12,padding:14,background:"#f0faf4"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div><p style={{margin:0,fontSize:14,fontWeight:700,color:"#111"}}>Peter Kamau</p><p style={{margin:0,fontSize:12,color:"#888"}}>→ Ruiru Stage · at stop</p></div>
+                    <span style={{padding:"3px 10px",borderRadius:20,background:DRIVER_LIGHT,color:DRIVER,fontSize:11,fontWeight:700}}>Spotted ✓</span>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:DRIVER_LIGHT,color:DRIVER,fontSize:13,fontWeight:700,cursor:"pointer"}}>Accept</button>
+                    <button style={{flex:1,padding:"9px 0",borderRadius:8,border:"none",background:"#ffe8e8",color:"#c00",fontSize:13,fontWeight:700,cursor:"pointer"}}>Reject</button>
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="SummaryCard — stat grid">
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {[["14","Total pickups"],["55 min","Duration"],["KSh 1,120","Fares"],["3","No-shows"]].map(([v,l])=>(
+                  <div key={l} style={{background:"#f8f8f8",borderRadius:12,padding:12,textAlign:"center"}}>
+                    <p style={{margin:0,fontSize:22,fontWeight:800,color:"#111"}}>{v}</p>
+                    <p style={{margin:0,fontSize:11,color:"#888",marginTop:2}}>{l}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="BookingCard — reservation summary">
+              <div style={{border:`1.5px solid ${RIDER_MID}`,borderRadius:14,padding:16,background:"#f7f9ff"}}>
+                <p style={{margin:"0 0 4px",fontSize:11,color:"#888"}}>Booking summary</p>
+                <p style={{margin:"0 0 12px",fontSize:15,fontWeight:700,color:"#111"}}>CBD → Thika Town</p>
+                <div style={{height:1,background:"#e0e8ff",marginBottom:12}}/>
+                {[["Matatu","KJA 001A"],["Departure","7:30 AM"],["Pickup stop","Githurai Stage"],["Window","7:28 – 7:38 AM"],["Seats","2"]].map(([k,v])=>(
+                  <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:12,color:"#888"}}>{k}</span>
+                    <span style={{fontSize:13,fontWeight:600,color:"#111"}}>{v}</span>
+                  </div>
+                ))}
+                <div style={{height:1,background:"#e0e8ff",margin:"10px 0"}}/>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:13,fontWeight:700,color:"#111"}}>Total fare</span>
+                  <span style={{fontSize:16,fontWeight:700,color:RIDER}}>KSh 160</span>
+                </div>
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* BANNERS */}
+        {tab===6 && (
+          <div>
+            <Section title="AlertBanner — inline contextual">
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[
+                  ["info","#e8f0ff","#1a5cff","#a8c0ff","🔔 KJA 001A is 1.5 km away","Head to Muthaiga Stage now"],
+                  ["approaching","#fff3e0","#d06000","#ffd080","📍 Matatu 1.5 km away","Start making your way to the road"],
+                  ["near","#ffe8e8","#d00","#ffb0b0","🚨 Matatu 500m away","Be at your stop now"],
+                  ["success","#e6f6ee","#0a7a3e","#90d4b0","✓ Driver confirmed your request","Board the matatu and confirm"],
+                  ["warning","#fff3e0","#d06000","#ffd080","⏸ You are paused","Riders cannot see your matatu"],
+                  ["error","#ffe8e8","#d00","#ffb0b0","Connection issue — retrying","Check your network connection"],
+                ].map(([type,bg,fg,border,title,sub])=>(
+                  <div key={type} style={{padding:"12px 16px",borderRadius:10,background:bg,border:`1px solid ${border}`}}>
+                    <p style={{margin:0,fontSize:13,fontWeight:700,color:fg}}>{title}</p>
+                    <p style={{margin:"2px 0 0",fontSize:12,color:fg,opacity:.8}}>{sub}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Countdown timer — within banner">
+              <div style={{padding:"12px 16px",borderRadius:10,background:"#ffe8e8",border:"1px solid #ffb0b0"}}>
+                <p style={{margin:0,fontSize:13,fontWeight:700,color:"#d00"}}>🚨 Matatu 500m away — be at your stop now</p>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8}}>
+                  <p style={{margin:0,fontSize:12,color:"#d00",opacity:.8}}>Pickup window closes in</p>
+                  <span style={{fontSize:24,fontWeight:800,color:"#d00"}}>1:48</span>
+                </div>
+                <div style={{height:4,background:"#ffb0b0",borderRadius:2,marginTop:8}}>
+                  <div style={{width:"90%",height:"100%",background:"#d00",borderRadius:2}}/>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Rules">
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {["Banners are always full-width within their parent container, 12px padding, 10px radius.","One active banner per screen at a time. New banner replaces the previous one.","Proximity banners (approaching, near) replace each other as alert_level advances.","Error banners (poll failure) clear automatically on next successful response.","Countdown appears inside the near banner only — not as a separate component."].map((r,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"8px 12px",background:"#f8f8f8",borderRadius:8}}>
+                    <span style={{fontSize:13,color:RIDER,fontWeight:700,flexShrink:0}}>→</span>
+                    <p style={{margin:0,fontSize:13,color:"#555"}}>{r}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* NAVIGATION */}
+        {tab===7 && (
+          <div>
+            <Section title="BottomNav — rider (3 tabs)">
+              <div style={{background:"#fff",border:"1.5px solid #f0f0f0",borderRadius:14,overflow:"hidden"}}>
+                <div style={{display:"flex",borderTop:"1px solid #eee",padding:"8px 0 12px"}}>
+                  {[["Home",true],["Trips",false],["Profile",false]].map(([label,active])=>(
+                    <div key={label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer"}}>
+                      <div style={{width:22,height:22,borderRadius:4,background:active?RIDER_LIGHT:"#f2f2f2",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <div style={{width:10,height:10,borderRadius:2,background:active?RIDER:"#bbb"}}/>
+                      </div>
+                      <span style={{fontSize:10,color:active?RIDER:"#888",fontWeight:active?600:400}}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Section>
+
+            <Section title="BottomNav — driver (4 tabs, with active trip badge)">
+              <div style={{background:"#fff",border:"1.5px solid #f0f0f0",borderRadius:14,overflow:"hidden"}}>
+                <div style={{display:"flex",borderTop:"1px solid #eee",padding:"8px 0 12px"}}>
+                  {[["Home",false,false],["Live trip",true,true],["History",false,false],["Profile",false,false]].map(([label,active,badge])=>(
+                    <div key={label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",position:"relative"}}>
+                      <div style={{position:"relative"}}>
+                        <div style={{width:22,height:22,borderRadius:4,background:active?DRIVER_LIGHT:"#f2f2f2",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                          <div style={{width:10,height:10,borderRadius:2,background:active?DRIVER:"#bbb"}}/>
+                        </div>
+                        {badge && <div style={{position:"absolute",top:-3,right:-3,width:8,height:8,borderRadius:"50%",background:DRIVER,border:"1.5px solid #fff"}}/>}
+                      </div>
+                      <span style={{fontSize:10,color:active?DRIVER:"#888",fontWeight:active?600:400}}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p style={{marginTop:8,fontSize:12,color:"#aaa"}}>Green dot badge on Live trip tab persists when driver is on any other tab during an active trip.</p>
+            </Section>
+
+            <Section title="AppHeader — screen header bar">
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <Label>With back button and title</Label>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"#fff",border:"1.5px solid #f0f0f0",borderRadius:12}}>
+                  <button style={{width:32,height:32,borderRadius:"50%",background:"#f2f2f2",border:"none",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+                  <span style={{fontSize:16,fontWeight:700,color:"#111"}}>Matatu detail</span>
+                  <span style={{padding:"3px 10px",borderRadius:20,background:"#e6f6ee",color:"#0a7a3e",fontSize:11,fontWeight:700}}>8 seats</span>
+                </div>
+                <Label>With title and action</Label>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"#fff",border:"1.5px solid #f0f0f0",borderRadius:12}}>
+                  <button style={{width:32,height:32,borderRadius:"50%",background:"#f2f2f2",border:"none",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
+                  <span style={{fontSize:16,fontWeight:700,color:"#111"}}>Set pickup spot</span>
+                  <span style={{fontSize:13,color:RIDER,cursor:"pointer",fontWeight:600}}>Done</span>
+                </div>
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* TOASTS & FEEDBACK */}
+        {tab===8 && (
+          <div>
+            <Section title="Toast — trigger examples">
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[["Driver could not pick you up","warning"],["Seat freed","success"],["Connection issue — retrying","error"],["Brian Otieno cancelled","default"]].map(([msg,type])=>(
+                  <button key={msg} onClick={()=>showToast(msg,type)} style={{width:"100%",padding:"12px 16px",borderRadius:10,border:`1.5px solid #e0e0e0`,background:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",color:"#111",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>{msg}</span>
+                    <span style={{fontSize:11,color:"#aaa",background:"#f2f2f2",padding:"2px 8px",borderRadius:20}}>{type}</span>
+                  </button>
+                ))}
+                <p style={{margin:0,fontSize:12,color:"#aaa"}}>Tap any row to trigger the toast above.</p>
+              </div>
+            </Section>
+
+            <Section title="Loading / skeleton state">
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[["100%",14],["70%",12],["50%",12]].map(([w,h],i)=>(
+                  <div key={i} style={{height:h,borderRadius:6,background:"linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%)",backgroundSize:"200% 100%",width:w,animation:"shimmer 1.5s infinite"}}/>
+                ))}
+                <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
+              </div>
+            </Section>
+
+            <Section title="Avatar / initials">
+              <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                {[["AW",RIDER,RIDER_LIGHT,40],["JM",DRIVER,DRIVER_LIGHT,40],["BO",RIDER,RIDER_LIGHT,32],["PK",DRIVER,DRIVER_LIGHT,32],["AW",RIDER,RIDER_LIGHT,72]].map(([init,fg,bg,size],i)=>(
+                  <div key={i} style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:fg,fontSize:size*0.3,flexShrink:0}}>
+                    {init}
+                  </div>
+                ))}
+              </div>
+              <p style={{marginTop:8,fontSize:12,color:"#aaa"}}>Sizes: 32px (inline), 40px (header/card), 72px (profile screen). Initials always 2 characters.</p>
+            </Section>
+
+            <Section title="Rules">
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {["Toasts appear at the bottom of the screen, 16px from edges, above the nav bar.","Toast duration: 2.5 seconds, then fade out. Not dismissable by tap.","One toast at a time — new toast replaces any currently visible toast.","Toast colours: default #111, success #0d7a3e, warning #d06000, error #ff3b30.","Skeleton shimmer used on card lists while fetching — never show an empty list."].map((r,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"8px 12px",background:"#f8f8f8",borderRadius:8}}>
+                    <span style={{fontSize:13,color:RIDER,fontWeight:700,flexShrink:0}}>→</span>
+                    <p style={{margin:0,fontSize:13,color:"#555"}}>{r}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+      </div>
+
+      {/* Toast */}
+      {toastVisible && (
+        <div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:toastBg[toastType]||"#111",color:"#fff",padding:"12px 20px",borderRadius:10,fontSize:13,fontWeight:500,zIndex:9999,whiteSpace:"nowrap",boxShadow:"0 4px 16px rgba(0,0,0,.2)"}}>
+          {toastMsg}
+        </div>
+      )}
+    </div>
+  );
+}
+
