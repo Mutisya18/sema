@@ -1,8 +1,6 @@
 # 🚍 Sema — Matatu Hailing, Reimagined
 
-Sema is a real-time matatu (Kenyan minibus) hailing and booking platform built for Nairobi. It connects **riders** who need a ride with **drivers** running active routes — with live GPS tracking, seat booking, and proximity alerts.
-
-> *"Sema" means "speak" or "say" in Swahili — as in, tell the matatu you're here.*
+Sema is a real-time matatu hailing and booking platform built for Nairobi. It connects **riders** who need a ride with **drivers** running active routes — with live GPS tracking, seat booking, and proximity alerts.
 
 ---
 
@@ -236,5 +234,3 @@ This wipes all trips and pickups and reseeds the original test accounts.
 | `SAVED_TRIP` | Driver's saved trip templates for quick reuse |
 
 ---
-
-*Built with 🇰🇪 for Nairobi.*
