@@ -7,7 +7,7 @@ Sema is a real-time matatu hailing and booking platform built for Nairobi. It co
 ## 🗺️ What It Does
 
 ### For Riders
-- **Quick Trip (Flagging)** — You're on the road. Find a matatu on your route, flag it, and tap "Pick Me Up" when it's close.
+- **Quick Trip (Flagging)** — You're on the road. Find a matatu on your route, flag it, and tap "Pick Me Up" when it's close.*For the demo, the riders location has been defaulted to CBD."
 - **Pickup** — Set a specific stop as your pickup point. The driver sees your dot on the map.
 - **Booking** — Reserve a seat on a scheduled future trip. Monitor it via My Trips.
 
