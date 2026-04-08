@@ -159,11 +159,17 @@ def create_pickup():
 
         # Guard: rider can only have one active pickup per trip
         existing = conn.execute(
-            "SELECT id FROM PICKUP WHERE trip_id = ? AND rider_id = ? AND status IN ('pending','accepted')",
+            "SELECT id FROM PICKUP WHERE trip_id = ? AND rider_id = ? AND status IN ('pending','accepted','boarded')",
             (trip_id, rider_id)
         ).fetchone()
         if existing:
             return jsonify({"error": "rider already has an active pickup on this trip"}), 409
+
+        # Remove any terminal pickup for this (trip, rider) so the unique constraint doesn't block re-flagging
+        conn.execute(
+            "DELETE FROM PICKUP WHERE trip_id = ? AND rider_id = ? AND status IN ('completed','rejected','cancelled','no_show')",
+            (trip_id, rider_id)
+        )
 
         cursor = conn.execute(
             """INSERT INTO PICKUP
@@ -213,7 +219,7 @@ def get_active_pickup():
         conn.commit()
 
         row = conn.execute(
-            "SELECT * FROM PICKUP WHERE rider_id = ? AND status IN ('pending', 'accepted') ORDER BY created_at DESC LIMIT 1",
+            "SELECT * FROM PICKUP WHERE rider_id = ? AND status IN ('pending', 'accepted', 'boarded') ORDER BY created_at DESC LIMIT 1",
             (rider_id,)
         ).fetchone()
 
@@ -416,7 +422,7 @@ def board_pickup(pickup_id):
 
         new_seats = trip["seats_available"] - row["seats_requested"]
         conn.execute(
-            "UPDATE PICKUP SET status = 'completed', boarded_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            "UPDATE PICKUP SET status = 'boarded', boarded_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (pickup_id,)
         )
         conn.execute(
@@ -436,6 +442,36 @@ def board_pickup(pickup_id):
 
     logger.info({"event": "pickup_boarded", "pickup_id": pickup_id, "seats_remaining": new_seats})
     return jsonify({"pickup": pickup_data}), 200
+
+
+# ─── PATCH /api/pickups/:id/complete ─────────────────────────────────────────
+
+@pickups_bp.route("/<int:pickup_id>/complete", methods=["PATCH"])
+def complete_pickup(pickup_id):
+    """Rider ends their trip, marking the pickup as completed."""
+    rider_id, err = _require_rider()
+    if err:
+        return err
+
+    conn = database.get_db()
+    try:
+        row = conn.execute("SELECT * FROM PICKUP WHERE id = ?", (pickup_id,)).fetchone()
+        if not row:
+            return jsonify({"error": "pickup not found"}), 404
+        if row["rider_id"] != rider_id:
+            return jsonify({"error": "not your pickup"}), 403
+        if row["status"] != "boarded":
+            return jsonify({"error": "pickup is not boarded"}), 409
+
+        conn.execute(
+            "UPDATE PICKUP SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (pickup_id,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({"ok": True}), 200
 
 
 # ─── PATCH /api/pickups/:id/cancel ───────────────────────────────────────────

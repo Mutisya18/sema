@@ -547,6 +547,7 @@ function _startDotInterpolation(targetLat, targetLng) {
   RiderState._animStart = Date.now();
   const DURATION = 5000;
   function step() {
+    if (!RiderState.matutuMarker) { RiderState._animFrame = null; return; }
     const p = Math.min((Date.now() - RiderState._animStart) / DURATION, 1);
     const lat = RiderState._prevPos.lat + (RiderState._targetPos.lat - RiderState._prevPos.lat) * p;
     const lng = RiderState._prevPos.lng + (RiderState._targetPos.lng - RiderState._prevPos.lng) * p;
@@ -768,7 +769,7 @@ async function _pollPickup() {
     _checkAndRevealBoardButton();
     return;
   }
-  if (pickup.status === 'completed') { stopPickupPoll(); showScreen('screen-live-trip'); return; }
+  if (pickup.status === 'boarded') { stopPickupPoll(); showScreen('screen-live-trip'); return; }
   if (pickup.status === 'rejected') {
     stopPickupPoll();
     showToast('Driver could not pick you up', 'warning');
@@ -878,8 +879,8 @@ function _buildWaitingScreen() {
         <p style="font-size:12px;color:#d00">Pickup window closes in</p>
         <span id="countdown" style="font-size:24px;font-weight:800;color:#d00">2:00</span>
       </div>
-      <button id="btn-on-board" style="display:none;width:100%;padding:14px;background:#0d7a3e;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">I'm On Board ✓</button>
       <button id="btn-pick-me-up" style="display:none;width:100%;padding:14px;background:#1a5cff;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">Pick Me Up! 🙋</button>
+      <button id="btn-on-board" style="display:none;width:100%;padding:14px;background:#0d7a3e;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">I'm On Board ✓</button>
       <button id="btn-cancel-pickup" style="width:100%;padding:14px;background:#f2f2f2;color:#333;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">Cancel request</button>
     </div>
   `;
@@ -1057,8 +1058,11 @@ ON_ENTER['screen-live-trip'] = () => {
     </div>
   `;
 
-  document.getElementById('btn-arrived').addEventListener('click', () => {
+  document.getElementById('btn-arrived').addEventListener('click', async () => {
     stopGpsPoll();
+    if (RiderState.activePickup) {
+      await apiPatch(`/api/pickups/${RiderState.activePickup.id}/complete`);
+    }
     showScreen('screen-trip-ended');
   });
 

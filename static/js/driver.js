@@ -804,25 +804,27 @@ function _riderDotStyle(rider) {
 function _addRiderCard(rider) {
   const feed = document.getElementById('rider-feed');
   if (!feed) return;
-  // Remove empty state
   if (feed.querySelector('p')) feed.innerHTML = '';
 
   const card = document.createElement('div');
   card.id = `rider-card-${rider.pickup_id}`;
   card.innerHTML = _buildRiderCardHTML(rider);
-  // Spotted cards go to top
+  _wireRiderCardButtons(card, rider);
   if (rider.spotted) feed.prepend(card);
   else feed.appendChild(card);
-  _wireRiderCardButtons(card, rider);
 }
 
 function _updateRiderCard(rider, old) {
   const card = document.getElementById(`rider-card-${rider.pickup_id}`);
   if (!card) { _addRiderCard(rider); return; }
 
+  if (rider.status === 'boarded') {
+    card.innerHTML = _buildRiderCardHTML(rider);
+    _wireRiderCardButtons(card, rider);
+    return;
+  }
   if (rider.status === 'completed') {
-    card.innerHTML = `<div style="padding:12px;border-radius:12px;background:#e6f6ee;border:1.5px solid #0d7a3e;margin-bottom:8px;font-size:13px;color:#0d7a3e;font-weight:600">✓ ${rider.rider_name} boarded</div>`;
-    setTimeout(() => card.remove(), 3000);
+    card.remove();
     return;
   }
   if (rider.status === 'rejected' || rider.status === 'cancelled') {
@@ -852,19 +854,22 @@ function _removeRiderCard(pickupId) {
 }
 
 function _buildRiderCardHTML(rider) {
+  const isBoarded = rider.status === 'boarded';
   const isSpotted = rider.spotted;
   const isBooking = rider.pickup_type === 'reservation';
   const isNear = rider.alert_level === 'near';
-  const border = isSpotted ? '1.5px solid #0d7a3e' : isBooking ? '1.5px solid #a8c0ff' : '1.5px solid #f0f0f0';
-  const bg = isSpotted ? '#f0faf4' : isBooking ? '#f7f9ff' : '#fff';
+  const border = isBoarded ? '1.5px solid #0d7a3e' : isSpotted ? '1.5px solid #0d7a3e' : isBooking ? '1.5px solid #a8c0ff' : '1.5px solid #f0f0f0';
+  const bg = isBoarded ? '#f0faf4' : isSpotted ? '#f0faf4' : isBooking ? '#f7f9ff' : '#fff';
 
-  const badge = isSpotted
-    ? '<span style="padding:3px 8px;border-radius:20px;background:#e6f6ee;color:#0a7a3e;font-size:11px;font-weight:700">Spotted ✓</span>'
-    : isBooking
-      ? '<span style="padding:3px 8px;border-radius:20px;background:#e8f0ff;color:#1a5cff;font-size:11px;font-weight:700">Booking ★</span>'
-      : rider.pickup_type === 'pickup'
-        ? '<span style="padding:3px 8px;border-radius:20px;background:#f0f0ff;color:#5533ff;font-size:11px;font-weight:700">Pickup 📍</span>'
-        : '<span style="padding:3px 8px;border-radius:20px;background:#fff3e0;color:#d06000;font-size:11px;font-weight:700">Flagging 🚩</span>';
+  const badge = isBoarded
+    ? '<span style="padding:3px 8px;border-radius:20px;background:#0d7a3e;color:#fff;font-size:11px;font-weight:700">Boarded 🧍</span>'
+    : isSpotted
+      ? '<span style="padding:3px 8px;border-radius:20px;background:#e6f6ee;color:#0a7a3e;font-size:11px;font-weight:700">Spotted ✓</span>'
+      : isBooking
+        ? '<span style="padding:3px 8px;border-radius:20px;background:#e8f0ff;color:#1a5cff;font-size:11px;font-weight:700">Booking ★</span>'
+        : rider.pickup_type === 'pickup'
+          ? '<span style="padding:3px 8px;border-radius:20px;background:#f0f0ff;color:#5533ff;font-size:11px;font-weight:700">Pickup 📍</span>'
+          : '<span style="padding:3px 8px;border-radius:20px;background:#fff3e0;color:#d06000;font-size:11px;font-weight:700">Flagging 🚩</span>';
 
   // Booking card at alert_level=near: expand with countdown + confirm/no-show
   const bookingExpanded = isBooking && isNear ? `
@@ -878,10 +883,12 @@ function _buildRiderCardHTML(rider) {
     </div>
   ` : '';
 
-  const actionBtns = rider.status === 'accepted'
-    ? (isBooking && isNear ? '' : '<span style="font-size:12px;color:#0d7a3e;font-weight:600">Accepted ✓</span>')
-    : `<button class="btn-accept" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#e6f6ee;color:#0d7a3e;font-size:13px;font-weight:700;cursor:pointer">Accept</button>
-       <button class="btn-reject" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#ffe8e8;color:#c00;font-size:13px;font-weight:700;cursor:pointer">Reject</button>`;
+  const actionBtns = isBoarded
+    ? ''
+    : rider.status === 'accepted'
+      ? (isBooking && isNear ? '' : '<span style="font-size:12px;color:#0d7a3e;font-weight:600">Accepted ✓</span>')
+      : `<button class="btn-accept" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#e6f6ee;color:#0d7a3e;font-size:13px;font-weight:700;cursor:pointer">Accept</button>
+         <button class="btn-reject" data-id="${rider.pickup_id}" style="flex:1;padding:8px 0;border-radius:8px;border:none;background:#ffe8e8;color:#c00;font-size:13px;font-weight:700;cursor:pointer">Reject</button>`;
 
   return `
     <div style="border:${border};border-radius:12px;padding:12px;background:${bg};margin-bottom:8px">

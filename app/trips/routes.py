@@ -377,7 +377,7 @@ def get_trip_riders(trip_id):
             """SELECT p.*, r.name as rider_name
                FROM PICKUP p
                JOIN RIDER r ON r.id = p.rider_id
-               WHERE p.trip_id = ? AND p.status IN ('pending', 'accepted')""",
+               WHERE p.trip_id = ? AND p.status IN ('pending', 'accepted', 'boarded')""",
             (trip_id,),
         ).fetchall()
 
