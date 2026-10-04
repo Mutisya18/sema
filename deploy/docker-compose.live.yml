@@ -1,0 +1,15 @@
+services:
+  sema:
+    image: ghcr.io/mutisya18/sema:latest
+    container_name: sema-live
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5001:5000"
+    env_file:
+      - .env.live
+    volumes:
+      - sema_live_data:/data
+
+volumes:
+  sema_live_data:
+    name: sema_live_data
