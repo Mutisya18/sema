@@ -1,0 +1,15 @@
+services:
+  sema:
+    image: ghcr.io/mutisya18/sema:test
+    container_name: sema-test
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5002:5000"
+    env_file:
+      - .env.test
+    volumes:
+      - sema_test_data:/data
+
+volumes:
+  sema_test_data:
+    name: sema_test_data

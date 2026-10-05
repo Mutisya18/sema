@@ -1,0 +1,12 @@
+# VPS Port Register
+# Host: 207.154.192.168 (mutisya)
+# All ports bind to 127.0.0.1 only. Nginx is the sole public entry point.
+#
+# Format: PORT | CONTAINER NAME   | PROJECT       | ENVIRONMENT | DOMAIN
+# ─────────────────────────────────────────────────────────────────────────────
+  3000   sozo              personal/sozo    live         sozo.co.ke
+  5001   sema-live         personal/sema    live         sema.sozo.co.ke
+  5002   sema-test         personal/sema    test         test.sema.sozo.co.ke
+# ─────────────────────────────────────────────────────────────────────────────
+# Next available: 5003
+# Client projects start at: 6000
